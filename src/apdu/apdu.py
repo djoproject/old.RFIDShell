@@ -21,7 +21,8 @@ class ApduDefault(Apdu):
     def __init__(self,cla,ins,p1,p2,data=[],expected_answer=0):
         self.table = [cla,ins,p1,p2,len(data)]
         self.table.extend(data)
-        self.table.append(expected_answer)
+        if len(data) > 0:
+            self.table.append(expected_answer)
 
     def getSize(self):
         "return the length of the command"

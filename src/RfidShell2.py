@@ -12,6 +12,8 @@ def exitFun(envi,args):
 def helperFun(envi,args):
     #TODO
     #   add a usage message, print it when command is wrong
+    #   build the usage with the arg list checker
+    #
     StartNode = None
     if len(args) > 0:
         try:
@@ -41,7 +43,7 @@ def listAddonFun(envi,args):
 
 def loadAddonFun(envi,args):
     #TODO check the addon name
-    
+
     toLoad = "addons."+str(args[0])
     __import__(toLoad)
     print "   "+toLoad+" loaded !"

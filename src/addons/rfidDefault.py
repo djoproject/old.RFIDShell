@@ -13,6 +13,11 @@ from smartcard.ATR import ATR
 from smartcard.pcsc.PCSCContext import PCSCContext
 from smartcard.pcsc.PCSCExceptions import EstablishContextException
 
+from smartcard.sw.ErrorCheckingChain import ErrorCheckingChain
+from smartcard.sw.ISO7816_4ErrorChecker import ISO7816_4ErrorChecker
+from smartcard.sw.ISO7816_8ErrorChecker import ISO7816_8ErrorChecker
+from smartcard.sw.ISO7816_9ErrorChecker import ISO7816_9ErrorChecker
+
 #TODO
     #-faire une section critique entre les observeurs et les methods pour proteger : l'envi et la liste de card
     #-lorsqu'on quitte, se deconnecter? ou ca le fait deja tout seul?
@@ -336,6 +341,12 @@ def connectReaderFromCardFun(envi,args):
     card.connection = envi["connection"]
     card.connection.card = card
     envi["connectedReader"] = card.connection.getReader()
+
+    errorchain=[]
+    errorchain=[ ErrorCheckingChain( errorchain, ISO7816_8ErrorChecker() ),
+                 ErrorCheckingChain( errorchain, ISO7816_9ErrorChecker() ),
+                 ErrorCheckingChain( errorchain, ISO7816_4ErrorChecker() ) ]
+    envi["connection"].setErrorCheckingChain(errorchain)
     
 def disconnectReaderFromCardFun(envi,args):
     if "connection" not in envi or envi["connection"] == None:
