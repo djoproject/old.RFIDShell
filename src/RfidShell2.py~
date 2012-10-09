@@ -67,7 +67,6 @@ if __name__ == "__main__":
     
     loadAddonFun(Executer.envi,["rfidDefault"])
     loadAddonFun(Executer.envi,["proxnroll"])
-    loadAddonFun(Executer.envi,["acr122"])
     
     Executer.mainLoop()
     

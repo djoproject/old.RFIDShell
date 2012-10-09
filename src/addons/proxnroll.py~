@@ -146,7 +146,7 @@ class Proxnroll(iso7816_4APDUBuilder):
     def getDataCardSerialNumber(self):
         return self.getDataCA(0x00,0x00)
     
-    def getDataCardATS(self):
+    def getDataCardHistoric(self):
         return self.getDataCA(0x01,0x00)
         
     def getDataCardCompleteIdentifier(self):
@@ -402,8 +402,8 @@ def productVersion(envi,args):
     Executer.executeAPDUAndConvertDataToString(DefaultProxnroll.getDataProductUSBIdentifier())
 def cardSerialNumber(envi,args):
     Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardSerialNumber())
-def cardATS(envi,args):
-    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardATS())
+def cardHistoric(envi,args):
+    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardHistoric())
 def cardCompleteIdentifier(envi,args):
     Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardCompleteIdentifier())
 def cardType(envi,args):
@@ -470,7 +470,7 @@ Executer.addCommand(["proxnroll","information","product","serialString"],"proxnr
 Executer.addCommand(["proxnroll","information","product","usbidentifiel"],"proxnroll product usb identifier","",True,productUSBIdentifier)
 Executer.addCommand(["proxnroll","information","product","version"],"proxnroll product version","",True,productVersion)
 Executer.addCommand(["proxnroll","information","card","serial"],"proxnroll product version","",True,cardSerialNumber)
-Executer.addCommand(["proxnroll","information","card","ats"],"proxnroll product version","",True,cardATS)
+Executer.addCommand(["proxnroll","information","card","historic"],"proxnroll product version","",True,cardHistoric)
 Executer.addCommand(["proxnroll","information","card","completeIdentifier"],"proxnroll product version","",True,cardCompleteIdentifier)
 Executer.addCommand(["proxnroll","information","card","type"],"proxnroll product version","",True,cardType)
 Executer.addCommand(["proxnroll","information","card","shortSerial"],"proxnroll product version","",True,cardShortSerialNumber)

@@ -169,7 +169,7 @@ class MultiArgsChecker(ArgsChecker):
             
             raise argException("Argument count is wrong, expected "+s+" arguments, get "+str(len(args)))
         
-class AllTheSameChecker(ArgsChecker):
+class AllTheSameChecker(ArgsChecker)
     def __init__(self, argChecker,count=None):
         self.argChecker = argChecker
         self.count = count

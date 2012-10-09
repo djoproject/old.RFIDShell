@@ -403,7 +403,7 @@ def connectReaderFun(envi,args):
     envi["connectedReader"] = reader
     
 def sendAPDU(envi,args):
-    Executer.executeAPDUAndPrintDataAndSW(defaultACR.getDataCardSerialNumber())
+    Executer.executeAPDUAndPrintData(defaultACR.getDataCardSerialNumber())
 
 ###############################################################################################
 ##### add command to shell ####################################################################
