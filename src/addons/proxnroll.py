@@ -1,6 +1,6 @@
 #!/usr/bin/python2.6
 from arg.args import *
-from apdu.apduExecuter import Executer
+from apdu.apduExecuter import *
 
 from keyList import keys
 from apdu.apdu import ApduDefault
@@ -399,7 +399,7 @@ def productSerial(envi,args):
 def productUSBIdentifier(envi,args):
     Executer.executeAPDUAndConvertDataToString(DefaultProxnroll.getDataProductUSBIdentifier())
 def productVersion(envi,args):
-    Executer.executeAPDUAndConvertDataToString(DefaultProxnroll.getDataProductUSBIdentifier())
+    Executer.executeAPDUAndConvertDataToString(DefaultProxnroll.getDataProductVersion())
 def cardSerialNumber(envi,args):
     Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardSerialNumber())
 def cardATS(envi,args):
@@ -455,47 +455,47 @@ def readInstruction(envi,args):
 
 
 t = tokenValueArgChecker(["off","on","auto","slow","quick","beat"])
-Executer.addCommand(["proxnroll","setlight"],"proxnroll setlight","",True,setLedColorFun,MultiArgsChecker([t,t],[t,t,t]))
+Executer.addCommand(["proxnroll","setlight"],                               "proxnroll setlight",                     "",True,setLedColorFun,MultiArgsChecker([t,t],[t,t,t]))
 i0to60000 = IntegerArgChecker(0,60000)
-Executer.addCommand(["proxnroll","setbuzzer"],"proxnroll setbuzzer","",True,setBuzzerDuration,MultiArgsChecker([],[i0to60000]))
+Executer.addCommand(["proxnroll","setbuzzer"],                              "proxnroll setbuzzer",                    "",True,setBuzzerDuration,MultiArgsChecker([],[i0to60000]))
 
 speedToken = tokenValueArgChecker(["9600","115200"])
-Executer.addCommand(["proxnroll","calypso","setspeed"],"proxnroll calypso set speed","",True,calypsoSpeed,DefaultArgsChecker([speedToken]))
-Executer.addCommand(["proxnroll","calypso","enabledigestupdate"],"proxnroll calypso enable digest update","",True,enableCalypsoDigestUpdate)
-Executer.addCommand(["proxnroll","calypso","disabledigestupdate"],"proxnroll calypso disable digest update","",True,enableCalypsoDigestUpdate)
+Executer.addCommand(["proxnroll","calypso","setspeed"],                     "proxnroll calypso set speed",            "",True,calypsoSpeed,DefaultArgsChecker([speedToken]))
+Executer.addCommand(["proxnroll","calypso","enabledigestupdate"],           "proxnroll calypso enable digest update", "",True,enableCalypsoDigestUpdate,None)
+Executer.addCommand(["proxnroll","calypso","disabledigestupdate"],          "proxnroll calypso disable digest update","",True,enableCalypsoDigestUpdate,None)
 
-Executer.addCommand(["proxnroll","information","vendor"],"proxnroll vendor name","",True,vendorName)
-Executer.addCommand(["proxnroll","information","product","name"],"proxnroll product name","",True,productName)
-Executer.addCommand(["proxnroll","information","product","serialString"],"proxnroll product serial","",True,productSerial)
-Executer.addCommand(["proxnroll","information","product","usbidentifiel"],"proxnroll product usb identifier","",True,productUSBIdentifier)
-Executer.addCommand(["proxnroll","information","product","version"],"proxnroll product version","",True,productVersion)
-Executer.addCommand(["proxnroll","information","card","serial"],"proxnroll product version","",True,cardSerialNumber)
-Executer.addCommand(["proxnroll","information","card","ats"],"proxnroll product version","",True,cardATS)
-Executer.addCommand(["proxnroll","information","card","completeIdentifier"],"proxnroll product version","",True,cardCompleteIdentifier)
-Executer.addCommand(["proxnroll","information","card","type"],"proxnroll product version","",True,cardType)
-Executer.addCommand(["proxnroll","information","card","shortSerial"],"proxnroll product version","",True,cardShortSerialNumber)
-Executer.addCommand(["proxnroll","information","card","atr"],"proxnroll product version","",True,cardATR)
-Executer.addCommand(["proxnroll","information","product","serial"],"proxnroll product version","",True,productSerialNumber)
-Executer.addCommand(["proxnroll","information","harwareIdentifier"],"proxnroll product version","",True,harwareIdentifier)
+Executer.addCommand(["proxnroll","information","vendor"],                   "proxnroll vendor name",                  "",True,vendorName,None)
+Executer.addCommand(["proxnroll","information","product","name"],           "proxnroll product name",                 "",True,productName,None)
+Executer.addCommand(["proxnroll","information","product","serialString"],   "proxnroll product serial",               "",True,productSerial,None)
+Executer.addCommand(["proxnroll","information","product","usbidentifiel"],  "proxnroll product usb identifier",       "",True,productUSBIdentifier,None)
+Executer.addCommand(["proxnroll","information","product","version"],        "proxnroll product version",              "",True,productVersion,None)
+Executer.addCommand(["proxnroll","information","card","serial"],            "proxnroll product version",              "",True,cardSerialNumber,None)
+Executer.addCommand(["proxnroll","information","card","ats"],               "proxnroll product version",              "",True,cardATS,None)
+Executer.addCommand(["proxnroll","information","card","completeIdentifier"],"proxnroll product version",              "",True,cardCompleteIdentifier,None)
+Executer.addCommand(["proxnroll","information","card","type"],              "proxnroll product version",              "",True,cardType,None)
+Executer.addCommand(["proxnroll","information","card","shortSerial"],       "proxnroll product version",              "",True,cardShortSerialNumber,None)
+Executer.addCommand(["proxnroll","information","card","atr"],               "proxnroll product version",              "",True,cardATR,None)
+Executer.addCommand(["proxnroll","information","product","serial"],         "proxnroll product version",              "",True,productSerialNumber,None)
+Executer.addCommand(["proxnroll","information","harwareIdentifier"],        "proxnroll product version",              "",True,harwareIdentifier,None)
 
-Executer.addCommand(["proxnroll","control","tracking","resume"],"proxnroll control ","",True,controlResumeCardTracking)
-Executer.addCommand(["proxnroll","control","tracking","suspend"],"proxnroll control ","",True,controlSuspendCardTracking)
-Executer.addCommand(["proxnroll","control","rffield","stop"],"proxnroll control ","",True,controlStopRFField)
-Executer.addCommand(["proxnroll","control","rffield","start"],"proxnroll control ","",True,controlStartRFField)
-Executer.addCommand(["proxnroll","control","rffield","reset"],"proxnroll control ","",True,controlResetRFField)
+Executer.addCommand(["proxnroll","control","tracking","resume"],            "proxnroll control ",                     "",True,controlResumeCardTracking,None)
+Executer.addCommand(["proxnroll","control","tracking","suspend"],           "proxnroll control ",                     "",True,controlSuspendCardTracking,None)
+Executer.addCommand(["proxnroll","control","rffield","stop"],               "proxnroll control ",                     "",True,controlStopRFField,None)
+Executer.addCommand(["proxnroll","control","rffield","start"],              "proxnroll control ",                     "",True,controlStartRFField,None)
+Executer.addCommand(["proxnroll","control","rffield","reset"],              "proxnroll control ",                     "",True,controlResetRFField,None)
 
-Executer.addCommand(["proxnroll","control","t=cl","deactivation"],"proxnroll control ","",True,controlTCLDeactivation)
-Executer.addCommand(["proxnroll","control","t=cl","activation","a"],"proxnroll control ","",True,controlTCLActivationTypeA)
-Executer.addCommand(["proxnroll","control","t=cl","activation","b"],"proxnroll control ","",True,controlTCLActivationTypeB)
-Executer.addCommand(["proxnroll","control","t=cl","disable","next"],"proxnroll control ","",True,controlDisableNextTCL)
-Executer.addCommand(["proxnroll","control","t=cl","disable","every"],"proxnroll control ","",True,controlDisableEveryTCL)
-Executer.addCommand(["proxnroll","control","t=cl","enable"],"proxnroll control ","",True,controlEnableTCLAgain)
-Executer.addCommand(["proxnroll","control","t=cl","reset"],"proxnroll control ","",True,controlResetAfterNextDisconnectAndDisableNextTCL)
+Executer.addCommand(["proxnroll","control","t=cl","deactivation"],          "proxnroll control ",                     "",True,controlTCLDeactivation,None)
+Executer.addCommand(["proxnroll","control","t=cl","activation","a"],        "proxnroll control ",                     "",True,controlTCLActivationTypeA,None)
+Executer.addCommand(["proxnroll","control","t=cl","activation","b"],        "proxnroll control ",                     "",True,controlTCLActivationTypeB,None)
+Executer.addCommand(["proxnroll","control","t=cl","disable","next"],        "proxnroll control ",                     "",True,controlDisableNextTCL,None)
+Executer.addCommand(["proxnroll","control","t=cl","disable","every"],       "proxnroll control ",                     "",True,controlDisableEveryTCL,None)
+Executer.addCommand(["proxnroll","control","t=cl","enable"],                "proxnroll control ",                     "",True,controlEnableTCLAgain,None)
+Executer.addCommand(["proxnroll","control","t=cl","reset"],                 "proxnroll control ",                     "",True,controlResetAfterNextDisconnectAndDisableNextTCL,None)
 
-Executer.addCommand(["proxnroll","control","stop"],"proxnroll control ","",True,controlStop)
+Executer.addCommand(["proxnroll","control","stop"],                         "proxnroll control ",                     "",True,controlStop,None,resultHandlerAPDU)
 
 #TODO
-Executer.addCommand(["proxnroll","test"],"proxnroll test instruction","",True,testInstruction)
+Executer.addCommand(["proxnroll","test"],                                   "proxnroll test instruction",             "",True,testInstruction,None)
 
 #TODO def encapsulate(self,datas,protocolType=0x00,timeoutType=0x00,defaultSW = True):
 
@@ -505,7 +505,7 @@ Executer.addCommand(["proxnroll","test"],"proxnroll test instruction","",True,te
 
     #TODO def readBinary(self, address = 0):
 i = IntegerArgChecker()
-Executer.addCommand(["proxnroll","read"],"proxnroll test instruction","",True,readInstruction,MultiArgsChecker([],[i]))
+Executer.addCommand(["proxnroll","read"],                                   "proxnroll test instruction",             "",True,readInstruction,MultiArgsChecker([],[i]))
 
     #TODO def mifareClassicRead(self,blockNumber,Key = None):
 

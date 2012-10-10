@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2.6
 from arg.args import *
 import os, sys
 from tries.multiLevelTries import buildDictionnary
@@ -66,8 +66,8 @@ if __name__ == "__main__":
     #TODO make the unload addon and the reload
     
     loadAddonFun(Executer.envi,["rfidDefault"])
-    loadAddonFun(Executer.envi,["proxnroll"])
-    loadAddonFun(Executer.envi,["acr122"])
+    #loadAddonFun(Executer.envi,["proxnroll"])
+    #loadAddonFun(Executer.envi,["acr122sam"])
     
     Executer.mainLoop()
     

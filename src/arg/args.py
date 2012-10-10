@@ -32,13 +32,19 @@ import atexit
 atexit.register(readline.write_history_file, histfile)
 del os, histfile
 
+def defaultResultHandler(result):
+    pass #print nothing
+    #print str(result)        
+
 class Command():
-    def __init__(self,name,helpMessage,showInHelp,command,argChecker=None):
+    
+    def __init__(self,name,helpMessage,showInHelp,command,argChecker=None,resultHandler=defaultResultHandler):
         self.name = name
         self.helpMessage = helpMessage
         self.command = command
         self.argChecker = argChecker
         self.showInHelp = showInHelp
+        self.resultHandler = resultHandler
 
 class CommandExecuter():
     def __init__(self):
@@ -47,8 +53,8 @@ class CommandExecuter():
         self.levelTries = multiLevelTries()
         self.envi["levelTries"] = self.levelTries
         
-    def addCommand(self,CommandStrings,name,helpMessage,showInHelp,com,argChecker=None):
-        c = Command(name,helpMessage,showInHelp,com,argChecker)
+    def addCommand(self,CommandStrings,name,helpMessage,showInHelp,com,argChecker=None,resultHandler=defaultResultHandler):
+        c = Command(name,helpMessage,showInHelp,com,argChecker,resultHandler)
         try:
             self.levelTries.addEntry(CommandStrings,c)
         except triesException as e:
@@ -75,7 +81,8 @@ class CommandExecuter():
             argsValue = []
         
         #call the function
-        commandToExecute.command(self.envi,argsValue)
+        result = commandToExecute.command(self.envi,argsValue)
+        commandToExecute.resultHandler(result)
         
     def mainLoop(self):
         while True:

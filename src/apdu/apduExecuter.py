@@ -1,59 +1,70 @@
 #!/usr/bin/python2.6
 
-from arg.args import CommandExecuter
+from arg.args import Executer
 from smartcard.sw.SWExceptions import CheckingErrorException,SWException
 from smartcard.util import toHexString
 
-class APDUExecuter(CommandExecuter):
-    def executeAPDU(self,apdu):
-        if "connection" not in self.envi or self.envi["connection"] == None:
-            self.printOnShell("no connection available")
-            
-        try:
-            data, sw1, sw2 = self.envi["connection"].transmit(apdu.toHexArray())
-        except SWException as ex:
-            self.printOnShell("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
-        except Exception as e:
-            self.printOnShell(str(e))
+def stringListResultHandler(result):
+    if result == None or len(result) == 0:
+        Executer.printOnShell("no item available")
+        return
         
-    def executeAPDUAndConvertDataToString(self,apdu):
-        if "connection" not in self.envi or self.envi["connection"] == None:
-            self.printOnShell("no connection available")
-            
-        try:
-            data, sw1, sw2 = self.envi["connection"].transmit(apdu.toHexArray())
-            s = ""
-            for c in data:
-                s += chr(c)
-            self.printOnShell("data = "+s)
-        except SWException as ex:
-            self.printOnShell("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
-        except Exception as e:
-            self.printOnShell(str(e))
+    for i in result:
+        Executer.printOnShell(i)
+
+def resultHandlerAPDU(apdu):
+    if "connection" not in Executer.envi or Executer.envi["connection"] == None:
+        Executer.printOnShell("no connection available")
+        return
         
-    def executeAPDUAndPrintData(self,apdu):
-        if "connection" not in self.envi or self.envi["connection"] == None:
-            self.printOnShell("no connection available")
-            
-        try:
-            data, sw1, sw2 = self.envi["connection"].transmit(apdu.toHexArray())
-            self.printOnShell(toHexString(data))
-        except SWException as ex:
-            self.printOnShell( "%x %x : " % (ex.sw1, ex.sw2)+ex.message)
-        except Exception as e:
-            self.printOnShell(str(e))
-            
-    def executeAPDUAndPrintDataAndSW(self,apdu):
-        if "connection" not in self.envi or self.envi["connection"] == None:
-            self.printOnShell("no connection available")
-            
-        try:
-            data, sw1, sw2 = self.envi["connection"].transmit(apdu.toHexArray())
-            self.printOnShell("%x %x : " % (sw1, sw2)+toHexString(data))
-        except SWException as ex:
-            self.printOnShell( "%x %x : " % (ex.sw1, ex.sw2)+ex.message)
-        except Exception as e:
-            self.printOnShell(str(e))
+    try:
+        data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
+    except SWException as ex:
+        Executer.printOnShell("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
+    except Exception as e:
+        Executer.printOnShell(str(e))
+    
+def resultHandlerAPDUAndConvertDataToString(apdu):
+    if "connection" not in Executer.envi or Executer.envi["connection"] == None:
+        Executer.printOnShell("no connection available")
+        return
+        
+    try:
+        data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
+        s = ""
+        for c in data:
+            s += chr(c)
+        Executer.printOnShell("data = "+s)
+    except SWException as ex:
+        Executer.printOnShell("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
+    except Exception as e:
+        Executer.printOnShell(str(e))
+    
+def resultHandlerAPDUAndPrintData(apdu):
+    if "connection" not in Executer.envi or Executer.envi["connection"] == None:
+        Executer.printOnShell("no connection available")
+        return
+        
+    try:
+        data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
+        Executer.printOnShell(toHexString(data))
+    except SWException as ex:
+        Executer.printOnShell( "%x %x : " % (ex.sw1, ex.sw2)+ex.message)
+    except Exception as e:
+        Executer.printOnShell(str(e))
+        
+def resultHandlerAPDUAndPrintDataAndSW(apdu):
+    if "connection" not in Executer.envi or Executer.envi["connection"] == None:
+        Executer.printOnShell("no connection available")
+        return
+        
+    try:
+        data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
+        Executer.printOnShell("%x %x : " % (sw1, sw2)+toHexString(data))
+    except SWException as ex:
+        Executer.printOnShell( "%x %x : " % (ex.sw1, ex.sw2)+ex.message)
+    except Exception as e:
+        Executer.printOnShell(str(e))
 
 #def executeAPDU(con,apdu):
     #TODO
@@ -64,5 +75,3 @@ class APDUExecuter(CommandExecuter):
 
 #def executeAPDUAndPrintData(con,apdu):
     #TODO
-    
-Executer = APDUExecuter()

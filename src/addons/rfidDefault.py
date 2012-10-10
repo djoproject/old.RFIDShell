@@ -1,6 +1,6 @@
 #!/usr/bin/python2.6
 from arg.args import *
-from apdu.apduExecuter import Executer
+from apdu.apduExecuter import *
 
 from keyList import keys
 import platform
@@ -28,7 +28,9 @@ from apdu.apdu import ApduRaw
 
 ########### TEST CONTEXT ###############
 try:
+    print "load context... please wait"
     PCSCContext()
+    print "context loaded"
 except EstablishContextException as e:
     print "   "+str(e)
     
@@ -203,13 +205,14 @@ dataobserver = DataManager()
 ###############################################################################################
 
 def listKeyFun(envi,args):
-    count = 0
-    for k in keys:
-        print k
-        count += 1
+    return keys.keys()
+    #count = 0
+    #for k in keys:
+    #    print k
+    #    count += 1
 
-    if count == 0:
-        Executer.printOnShell("no key available")
+    #if count == 0:
+    #    Executer.printOnShell("no key available")
 
 def addKeyFun(envi,args):
     key = []    
@@ -219,18 +222,21 @@ def addKeyFun(envi,args):
     keys[args[0]] = key
 
 def listReaderFun(envi,args):
-    indice = 0
+    #indice = 0
     try:
-        for r in readers():
-            print "\t"+str(indice)+" : "+str(r)
-            indice += 1
+        r = readers()
+    #    for r in readers():
+    #        print "\t"+str(indice)+" : "+str(r)
+    #        indice += 1
     except Exception as e:
-        print "   "+str(e)
+        Executer.printOnShell(str(e))
         return
 
-    if indice == 0:
-        Executer.printOnShell("no reader available on this system")
+    if r == None or len(r) == 0:
+        #Executer.printOnShell("no reader available on this system")
         Executer.printOnShell("HINT : some reader need to connect a card before to be detected in the system")
+        
+    return r
 
 def monitorCardFun(envi,args):
     if cardobserver.enable:
@@ -293,20 +299,30 @@ def disableMonitorCardAll(envi,args):
     disableMonitorDataFun(envi,args)
 
 def listCardFun(envi,args):
-    i = 1
-    for c in cardobserver.cardList:
-        Executer.printOnShell("card "+str(i)+" : "+toHexString(c.atr) + " connected on reader <" + str(c.reader)+">")
-        i += 1
+    return cardobserver.cardList
+    #i = 1
+    #for c in cardobserver.cardList:
+    #    Executer.printOnShell("card "+str(i)+" : "+toHexString(c.atr) + " connected on reader <" + str(c.reader)+">")
+    #    i += 1
     
-    if i == 1:
-        Executer.printOnShell("no card available")
+    #if i == 1:
+    #    Executer.printOnShell("no card available")
 
+def cardListResultHandler(result):
+    if result == None or len(result) == 0:
+        Executer.printOnShell("no item available")
+        return
+    
+    i = 1
+    for c in result:
+        Executer.printOnShell("card "+str(i)+" : "+toHexString(c.atr) + " connected on reader <" + str(c.reader)+">")
 
 def cardInfoFun(envi,args):    
     if len(args) == 0:
         indice = 0
         if len(cardobserver.cardList) > 1:
             Executer.printOnShell("Warning : the information comes from the first card available in the list, there are others cards")
+            i += 1
     else:
         indice = args[0]
         
@@ -405,42 +421,43 @@ def connectReaderFun(envi,args):
     envi["connectedReader"] = reader
     
 def sendAPDU(envi,args):
-    Executer.executeAPDUAndPrintDataAndSW(ApduRaw(args))
+    #Executer.executeAPDUAndPrintDataAndSW(ApduRaw(args))
+    return args
 
 ###############################################################################################
 ##### add command to shell ####################################################################
 ###############################################################################################
 
 #key management        
-Executer.addCommand(["lskey"],"list keys","list the available key name",True,listKeyFun)
+Executer.addCommand(["lskey"],                     "list keys",               "list the available key name",                                   True,listKeyFun,                  None,stringListResultHandler)
 s = stringArgChecker()
 i = IntegerArgChecker()
 keyCmdChecker = MultiArgsChecker([s,i,i,i,i,i,i,i,i],[s,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i,i]) #manage 8bytes or 16bytes key
 
-Executer.addCommand(["setKey"],"set a key","set a 8 bytes key or 16 bytes key",True,addKeyFun,keyCmdChecker)
+Executer.addCommand(["setKey"],                    "set a key",               "set a 8 bytes key or 16 bytes key",                             True,addKeyFun,                   keyCmdChecker)
 
 #reader management
-Executer.addCommand(["lsreader"],"list reader","list all the reader available on the system",True,listReaderFun)
-Executer.addCommand(["connect","reader"],"connect a card","establish a link between the shell and a card",True,connectReaderFun,MultiArgsChecker([],[s]))
-Executer.addCommand(["disconnect"],"disconnect a card/reader","destroy the link between the current card/reader and the shell",True,disconnectReaderFromCardFun)
+Executer.addCommand(["lsreader"],                  "list reader",             "list all the reader available on the system",                   True,listReaderFun,               None,stringListResultHandler)
+Executer.addCommand(["connect","reader"],          "connect a card",          "establish a link between the shell and a card",                 True,connectReaderFun,            MultiArgsChecker([],[s]))
+Executer.addCommand(["disconnect"],                "disconnect a card/reader","destroy the link between the current card/reader and the shell",True,disconnectReaderFromCardFun)
 
 #monitoring management
-Executer.addCommand(["monitor","all"],"monitor all","enable the global monitoring",True,monitorCardAll)
-Executer.addCommand(["monitor","reader"],"monitor the reader","enable the reader monitoring",True,monitorReaderFun)
-Executer.addCommand(["monitor","card"],"monitor card","enable the card monitoring",True,monitorCardFun)
-Executer.addCommand(["monitor","data"],"monitor data","enable the data monitoring",True,monitorDataFun)
+Executer.addCommand(["monitor","all"],             "monitor all",             "enable the global monitoring",                                  True,monitorCardAll)
+Executer.addCommand(["monitor","reader"],          "monitor the reader",      "enable the reader monitoring",                                  True,monitorReaderFun)
+Executer.addCommand(["monitor","card"],            "monitor card",            "enable the card monitoring",                                    True,monitorCardFun,              None,stringListResultHandler)
+Executer.addCommand(["monitor","data"],            "monitor data",            "enable the data monitoring",                                    True,monitorDataFun)
 
-Executer.addCommand(["disable","monitor","all"],"disable all monitor","disable the global monitoring",True,disableMonitorCardAll)
-Executer.addCommand(["disable","monitor","reader"],"disable reader monitor","disable the reader monitoring",True,disableMonitorReaderFun)
-Executer.addCommand(["disable","monitor","card"],"disable card monitor","disable the card monitoring",True,disableMonitorCardFun)
-Executer.addCommand(["disable","monitor","data"],"disable data monitor","disable the data monitoring",True,disableMonitorDataFun)
+Executer.addCommand(["disable","monitor","all"],   "disable all monitor",     "disable the global monitoring",                                 True,disableMonitorCardAll)
+Executer.addCommand(["disable","monitor","reader"],"disable reader monitor",  "disable the reader monitoring",                                 True,disableMonitorReaderFun)
+Executer.addCommand(["disable","monitor","card"],  "disable card monitor",    "disable the card monitoring",                                   True,disableMonitorCardFun)
+Executer.addCommand(["disable","monitor","data"],  "disable data monitor",    "disable the data monitoring",                                   True,disableMonitorDataFun)
 
 #card management
-Executer.addCommand(["lscard"],"list card","list all the card available on the system",True,listCardFun)
-Executer.addCommand(["cardinfo"],"card info","print all the info of the card ATR",True,cardInfoFun,MultiArgsChecker([],[i]))
-Executer.addCommand(["connect","card"],"connect a card","establish a link between the shell and a card",True,connectReaderFromCardFun,MultiArgsChecker([],[i]))
+Executer.addCommand(["lscard"],                    "list card",               "list all the card available on the system",                     True,listCardFun,                None,cardListResultHandler)
+Executer.addCommand(["cardinfo"],                  "card info",               "print all the info of the card ATR",                            True,cardInfoFun,                MultiArgsChecker([],[i]))
+Executer.addCommand(["connect","card"],            "connect a card",          "establish a link between the shell and a card",                 True,connectReaderFromCardFun,   MultiArgsChecker([],[i]))
 
 #apdu
-Executer.addCommand(["apdu"],"","",True,sendAPDU,AllTheSameChecker(hexaArgChecker()))
+Executer.addCommand(["apdu"],"","",True,sendAPDU,AllTheSameChecker(hexaArgChecker()),resultHandlerAPDUAndPrintDataAndSW)
 
 
