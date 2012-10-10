@@ -258,8 +258,41 @@ class IntegerArgChecker(ArgChecker):
         return int(super(IntegerArgChecker,self).getValue(value,argNumber))
 
 class hexaArgChecker(ArgChecker):
-    #TODO check hexa in forme FF or 0xFF
-    pass
+    def __init__(self, minimum=0x00, maximum=0xFF):
+        self.minimum = minimum
+        self.maximum = maximum
+    
+    def checkValue(self, value,argNumber=None):
+        if value == None:
+            if argNumber != None:
+                raise argException("(hexadecimal) Argument "+str(argNumber)+" : the integer arg can't be None")
+            else:
+                raise argException("(hexadecimal) Argument : the integer arg can't be None")
+        try:
+            castedValue = int(value,16)
+        except ValueError:
+            if argNumber != None:
+                raise argException("(hexadecimal) Argument "+str(argNumber)+" : this arg is not a valid integer")
+            else:
+                raise argException("(hexadecimal) Argument : this arg is not a valid integer")
+        
+        if self.minimum != None:
+            if castedValue < self.minimum:
+                if argNumber != None:
+                    raise argException("(hexadecimal) Argument "+str(argNumber)+" : the lowest value must be bigger or equal than "+str(self.minimum))
+                else:
+                    raise argException("(hexadecimal) Argument : the lowest value must be bigger or equal than "+str(self.minimum))
+                
+        if self.maximum != None:
+            if castedValue > self.maximum:
+                if argNumber != None:
+                    raise argException("(hexadecimal) Argument "+str(argNumber)+" : the biggest value must be lower or equal than "+str(self.maximum))
+                else:
+                    raise argException("(hexadecimal) Argument : the biggest value must be lower or equal than "+str(self.maximum))
+
+    def getValue(self,value,argNumber=None):
+        self.checkValue(value)
+        return int(super(hexaArgChecker,self).getValue(value,argNumber),16)
 
 class tokenValueArgChecker(stringArgChecker):
     #TODO stocker les tokens dans un tries

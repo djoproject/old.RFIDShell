@@ -31,3 +31,14 @@ class ApduDefault(Apdu):
     def toHexArray(self):
         "return the command into a byte array"
         return self.table
+        
+class ApduRaw(Apdu):
+    def __init__(self,rawByte):
+        self.rawByte = rawByte
+    def getSize(self):
+        "return the length of the command"
+        return len(self.rawByte)
+
+    def toHexArray(self):
+        "return the command into a byte array"
+        return self.rawByte

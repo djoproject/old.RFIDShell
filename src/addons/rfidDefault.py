@@ -20,6 +20,8 @@ from smartcard.sw.ISO7816_4ErrorChecker import ISO7816_4ErrorChecker
 from smartcard.sw.ISO7816_8ErrorChecker import ISO7816_8ErrorChecker
 from smartcard.sw.ISO7816_9ErrorChecker import ISO7816_9ErrorChecker
 
+from apdu.apdu import ApduRaw
+
 #TODO
     #-faire une section critique entre les observeurs et les methods pour proteger : l'envi et la liste de card
     #-lorsqu'on quitte, se deconnecter? ou ca le fait deja tout seul?
@@ -403,7 +405,7 @@ def connectReaderFun(envi,args):
     envi["connectedReader"] = reader
     
 def sendAPDU(envi,args):
-    Executer.executeAPDUAndPrintDataAndSW(defaultACR.getDataCardSerialNumber())
+    Executer.executeAPDUAndPrintDataAndSW(ApduRaw(args))
 
 ###############################################################################################
 ##### add command to shell ####################################################################
