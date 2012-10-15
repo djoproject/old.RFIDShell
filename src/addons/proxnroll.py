@@ -4,7 +4,6 @@ from apdu.apduExecuter import *
 
 from keyList import keys
 from apdu.apdu import ApduDefault
-from smartcard.sw.ErrorChecker import ErrorChecker
 from apdu.exception import apduBuilderException
 from smartcard.sw.SWExceptions import CheckingErrorException
 from addons.iso7816_4 import iso7816_4APDUBuilder
@@ -26,20 +25,7 @@ proxnrollSW = {
 }
 #TODO load somewhere
 
-class PronrollErrorChecker(ErrorChecker):
-    def __call__( self, data, sw1, sw2 ):
-        if proxnrollSW.has_key(sw1): 
-            exception, sw2dir = proxnrollSW[sw1] 
-            if type(sw2dir) == type({}): 
-                try: 
-                    message = sw2dir[sw2] 
-                    raise exception(data, sw1, sw2, message) 
-                except KeyError: 
-                    if None in sw2dir:
-                        message = sw2dir[None]+" : "+str(sw2) 
-                        raise exception(data, sw1, sw2, message)
-
-class Proxnroll(iso7816_4APDUBuilder):
+class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
     colorOFF   = 0x00
     colorON    = 0x01
     colorSLOW  = 0x02
@@ -49,8 +35,9 @@ class Proxnroll(iso7816_4APDUBuilder):
     
     #def __init__(self):
     #    pass
-        
-    def setLedColorFun(self,red,green,yellow_blue = None):        
+    
+    @staticmethod
+    def setLedColorFun(red,green,yellow_blue = None):        
         if red < 0 or red > 5:
             raise apduBuilderException("invalid argument red, a value between 0 and 5 was expected, got "+str(red))
             
@@ -65,8 +52,9 @@ class Proxnroll(iso7816_4APDUBuilder):
             d = [0x1E,red,green,yellow_blue]
         
         return ApduDefault(cla=0xFF,ins=0xF0,p1=0x00,p2=0x00,data=d)
-        
-    def setBuzzerDuration(self,duration):
+    
+    @staticmethod    
+    def setBuzzerDuration(duration):
         if duration < 0 or duration > 60000:
             raise apduBuilderException("invalid argument duration, a value between 0 and 60000 was expected, got "+str(duration))
         
@@ -74,8 +62,9 @@ class Proxnroll(iso7816_4APDUBuilder):
         msb = (duration>>8)&0xFF
         
         return ApduDefault(cla=0xFF,ins=0xF0,p1=0x00,p2=0x00,data=[0x1C,msb,lsb])
-        
-    def test(self, expected_answer_size = 0,delay_to_answer=0, datas = []):
+    
+    @staticmethod    
+    def test(expected_answer_size = 0,delay_to_answer=0, datas = []):
         
         if expected_answer_size < 0 or expected_answer_size > 255:
             raise apduBuilderException("invalid argument expected_answer_size, a value between 0 and 255 was expected, got "+str(expected_answer_size))
@@ -128,7 +117,8 @@ class Proxnroll(iso7816_4APDUBuilder):
     timeout2s = 0x0C
     timeout4s = 0x0D
     
-    def encapsulate(self,datas,protocolType=0x00,timeoutType=0x00,defaultSW = True):
+    @staticmethod
+    def encapsulate(datas,protocolType=0x00,timeoutType=0x00,defaultSW = True):
         
         if timeoutType < 0 or timeoutType > 0x0D:
             raise apduBuilderException("invalid argument timeoutType, a value between 0 and 13 was expected, got "+str(timeoutType))
@@ -142,49 +132,63 @@ class Proxnroll(iso7816_4APDUBuilder):
         return ApduDefault(cla=0xFF,ins=0xFE,p1=protocolType,p2=timeoutType,data=datas)
         
     ###
-        
-    def getDataCardSerialNumber(self):
-        return self.getDataCA(0x00,0x00)
     
-    def getDataCardATS(self):
-        return self.getDataCA(0x01,0x00)
+    @staticmethod 
+    def getDataCardSerialNumber():
+        return iso7816_4APDUBuilder.getDataCA(0x00,0x00)
+    
+    @staticmethod
+    def getDataCardATS():
+        return iso7816_4APDUBuilder.getDataCA(0x01,0x00)
+    
+    @staticmethod
+    def getDataCardCompleteIdentifier():
+        return iso7816_4APDUBuilder.getDataCA(0xF0,0x00)
+    
+    @staticmethod
+    def getDataCardType():
+        return iso7816_4APDUBuilder.getDataCA(0xF1,0x00)
+
+    @staticmethod
+    def getDataCardShortSerialNumber():
+        return iso7816_4APDUBuilder.getDataCA(0xF2,0x00)
+
+    @staticmethod
+    def getDataCardATR():
+        return iso7816_4APDUBuilder.getDataCA(0xFA,0x00)
+    
+    @staticmethod
+    def getDataProductSerialNumber():
+        return iso7816_4APDUBuilder.getDataCA(0xFF,0x00)
+
+    @staticmethod
+    def getDataHarwareIdentifier():
+        return iso7816_4APDUBuilder.getDataCA(0xFF,0x01)
+
+    @staticmethod
+    def getDataVendorName():
+        return iso7816_4APDUBuilder.getDataCA(0xFF,0x81)
+
+    @staticmethod
+    def getDataProductName():
+        return iso7816_4APDUBuilder.getDataCA(0xFF,0x82)
+
+    @staticmethod
+    def getDataProductSerialNumber():
+        return iso7816_4APDUBuilder.getDataCA(0xFF,0x83)
+
+    @staticmethod
+    def getDataProductUSBIdentifier():
+        return iso7816_4APDUBuilder.getDataCA(0xFF,0x84)
         
-    def getDataCardCompleteIdentifier(self):
-        return self.getDataCA(0xF0,0x00)
-      
-    def getDataCardType(self):
-        return self.getDataCA(0xF1,0x00)
-
-    def getDataCardShortSerialNumber(self):
-        return self.getDataCA(0xF2,0x00)
-
-    def getDataCardATR(self):
-        return self.getDataCA(0xFA,0x00)
-        
-    def getDataProductSerialNumber(self):
-        return self.getDataCA(0xFF,0x00)
-
-    def getDataHarwareIdentifier(self):
-        return self.getDataCA(0xFF,0x01)
-
-    def getDataVendorName(self):
-        return self.getDataCA(0xFF,0x81)
-
-    def getDataProductName(self):
-        return self.getDataCA(0xFF,0x82)
-
-    def getDataProductSerialNumber(self):
-        return self.getDataCA(0xFF,0x83)
-
-    def getDataProductUSBIdentifier(self):
-        return self.getDataCA(0xFF,0x84)
-        
-    def getDataProductVersion(self):
-        return self.getDataCA(0xFF,0x85)
+    @staticmethod
+    def getDataProductVersion():
+        return iso7816_4APDUBuilder.getDataCA(0xFF,0x85)
         
     ###          
-        
-    def loadKey(self,KeyIndex,Key,InVolatile = True,isTypeA = True):
+    
+    @staticmethod
+    def loadKey(KeyIndex,Key,InVolatile = True,isTypeA = True):
         if len(Key) != 6:
             raise apduBuilderException("invalid key size, must be 6, got "+str(len(Key)))
         
@@ -205,8 +209,8 @@ class Proxnroll(iso7816_4APDUBuilder):
         
             return ApduDefault(cla=0xFF,ins=0x82,p1=0x00,p2=KeyIndex,data=Key)
         
-        
-    def generalAuthenticate(self,blockNumber,KeyIndex,InVolatile = True,isTypeA = True):
+    @staticmethod
+    def generalAuthenticate(blockNumber,KeyIndex,InVolatile = True,isTypeA = True):
         if blockNumber < 0 or blockNumber > 255:
             raise apduBuilderException("invalid argument blockNumber, a value between 0 and 255 was expected, got "+str(blockNumber))
         
@@ -225,8 +229,9 @@ class Proxnroll(iso7816_4APDUBuilder):
             datas = [0x01,0x00,blockNumber,0x61,KeyIndex]
      
         return ApduDefault(cla=0xFF,ins=0x88,p1=0x00,p2=0x00,data=datas)
-        
-    def readBinary(self, address = 0):
+    
+    @staticmethod
+    def readBinary(address = 0):
         if address < 0 or address > 65535:
             raise apduBuilderException("invalid argument address, a value between 0 and 65535 was expected, got "+str(address))
         
@@ -235,7 +240,8 @@ class Proxnroll(iso7816_4APDUBuilder):
         
         return ApduDefault(cla=0xFF,ins=0xB0,p1=msb,p2=lsb)
         
-    def mifareClassicRead(self,blockNumber,Key = None):
+    @staticmethod
+    def mifareClassicRead(blockNumber,Key = None):
         if blockNumber < 0 or blockNumber > 255:
             raise apduBuilderException("invalid argument blockNumber, a value between 0 and 255 was expected, got "+str(blockNumber))
         
@@ -246,8 +252,9 @@ class Proxnroll(iso7816_4APDUBuilder):
                 raise apduBuilderException("invalid key size, must be 6, got "+str(len(Key)))
                 
             return ApduDefault(cla=0xFF,ins=0xF3,p1=0x00,p2=blockNumber,data=Key)
-            
-    def updateBinary(self,datas):
+        
+    @staticmethod
+    def updateBinary(datas):
         if address < 0 or address > 65535:
             raise apduBuilderException("invalid argument address, a value between 0 and 65535 was expected, got "+str(address))
         
@@ -259,7 +266,8 @@ class Proxnroll(iso7816_4APDUBuilder):
         
         return ApduDefault(cla=0xFF,ins=0xD6,p1=msb,p2=lsb,data=datas)
         
-    def mifareClassifWrite(self,blockNumber,datas,Key = None):
+    @staticmethod
+    def mifareClassifWrite(blockNumber,datas,Key = None):
         if blockNumber < 0 or blockNumber > 255:
             raise apduBuilderException("invalid argument blockNumber, a value between 0 and 255 was expected, got "+str(blockNumber))
 
@@ -282,58 +290,74 @@ class Proxnroll(iso7816_4APDUBuilder):
         
     
     #### SLOT CONTROL ####
-    
-    def slotControlResumeCardTracking(self):
+    @staticmethod
+    def slotControlResumeCardTracking():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x00,p2=0x00)
     
-    def slotControlSuspendCardTracking(self):
+    @staticmethod
+    def slotControlSuspendCardTracking():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x01,p2=0x00)
     
-    def slotControlStopRFField(self):
+    @staticmethod
+    def slotControlStopRFField():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x10,p2=0x00)
 
-    def slotControlStartRFField(self):
+    @staticmethod
+    def slotControlStartRFField():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x10,p2=0x01)
-        
-    def slotControlResetRFField(self):
+    
+    @staticmethod
+    def slotControlResetRFField():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x10,p2=0x02)
-
-    def slotControlTCLDeactivation(self):
+        
+    @staticmethod
+    def slotControlTCLDeactivation():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x20,p2=0x00)
 
-    def slotControlTCLActivationTypeA(self):
+    @staticmethod
+    def slotControlTCLActivationTypeA():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x20,p2=0x01)
 
-    def slotControlTCLActivationTypeB(self):
+    @staticmethod
+    def slotControlTCLActivationTypeB():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x20,p2=0x02)
-        
-    def slotControlDisableNextTCL(self):
+    
+    @staticmethod
+    def slotControlDisableNextTCL():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x20,p2=0x04)
 
-    def slotControlDisableEveryTCL(self):
+    @staticmethod
+    def slotControlDisableEveryTCL():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x20,p2=0x05)
 
-    def slotControlEnableTCLAgain(self):
+    @staticmethod
+    def slotControlEnableTCLAgain():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x20,p2=0x06)
 
-    def slotControlResetAfterNextDisconnectAndDisableNextTCL(self):
+    @staticmethod
+    def slotControlResetAfterNextDisconnectAndDisableNextTCL():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0x20,p2=0x07)
-        
-    def slotControlStop(self):
+    
+    @staticmethod
+    def slotControlStop():
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0xDE,p2=0xAD)
     
     #### CALYPSO METHOD ###
     
-    def configureCalypsoSamSetSpeed9600(self):
+    @staticmethod
+    def configureCalypsoSamSetSpeed9600():
         return ApduDefault(cla=0xFF,ins=0xFC,p1=0x04,p2=0x00)
         
-    def configureCalypsoSamSetSpeed115200(self):
+    @staticmethod
+    def configureCalypsoSamSetSpeed115200():
         return ApduDefault(cla=0xFF,ins=0xFC,p1=0x04,p2=0x01)
 
-    def configureCalypsoSamEnableInternalDigestUpdate(self):
+    @staticmethod
+    def configureCalypsoSamEnableInternalDigestUpdate():
         return ApduDefault(cla=0xFF,ins=0xFC,p1=0x08,p2=0x00)
-
-    def configureCalypsoSamDisableInternalDigestUpdate(self):
+        
+    @staticmethod
+    def configureCalypsoSamDisableInternalDigestUpdate():
         return ApduDefault(cla=0xFF,ins=0xFC,p1=0x08,p2=0x01)
 
 ##############################################################################################################
@@ -347,155 +371,65 @@ except NameError:
     print "  No variable Executer found, this is an addon, it can't be executed alone"
     exit()
 
-DefaultProxnroll = Proxnroll()
-        
-def setLedColorFun(envi,args):
-    
-    def convertTokentToCode(a):
-        if a == "off":
-            return Proxnroll.colorOFF
-        elif a == "on":
-            return Proxnroll.colorON
-        elif a == "slow":
-            return Proxnroll.colorSLOW
-        #elif a == "auto":
-        #    d.append(0x03)
-        elif a == "quick":
-            return Proxnroll.colorQUICK
-        elif a == "beat":
-            return Proxnroll.colorBEAT
-        else:  
-            return Proxnroll.colorAUTO
-    
-    if len(args) > 2:
-        Executer.executeAPDU(DefaultProxnroll.setLedColorFun(convertTokentToCode(args[0]),convertTokentToCode(args[1]),convertTokentToCode(args[2])))
-    else:
-        Executer.executeAPDU(DefaultProxnroll.setLedColorFun(convertTokentToCode(args[0]),convertTokentToCode(args[1])))
-    
-def setBuzzerDuration(envi,args):    
-    if len(args) == 0:
-        duration = 0
-    else:
-        duration = args[0]
-
-    Executer.executeAPDU(DefaultProxnroll.setBuzzerDuration(duration))
-    
-def calypsoSpeed(envi,args):
-    if args[0] == "9600":
-        Executer.executeAPDU(DefaultProxnroll.configureCalypsoSamSetSpeed9600())
-    else:
-        Executer.executeAPDU(DefaultProxnroll.configureCalypsoSamSetSpeed115200())
-    
-def enableCalypsoDigestUpdate(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.configureCalypsoSamEnableInternalDigestUpdate())
-def enableCalypsoDigestUpdate(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.configureCalypsoSamDisableInternalDigestUpdate())
-def vendorName(envi,args):
-    Executer.executeAPDUAndConvertDataToString(DefaultProxnroll.getDataVendorName())
-def productName(envi,args):
-    Executer.executeAPDUAndConvertDataToString(DefaultProxnroll.getDataProductName())     
-def productSerial(envi,args):
-    Executer.executeAPDUAndConvertDataToString(DefaultProxnroll.getDataProductSerialNumber())
-def productUSBIdentifier(envi,args):
-    Executer.executeAPDUAndConvertDataToString(DefaultProxnroll.getDataProductUSBIdentifier())
-def productVersion(envi,args):
-    Executer.executeAPDUAndConvertDataToString(DefaultProxnroll.getDataProductVersion())
-def cardSerialNumber(envi,args):
-    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardSerialNumber())
-def cardATS(envi,args):
-    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardATS())
-def cardCompleteIdentifier(envi,args):
-    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardCompleteIdentifier())
-def cardType(envi,args):
-    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardType())    
-def cardShortSerialNumber(envi,args):
-    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardShortSerialNumber())
-def cardATR(envi,args):
-    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataCardATR())
-def productSerialNumber(envi,args):
-    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataProductSerialNumber())
-def harwareIdentifier(envi,args):
-    Executer.executeAPDUAndPrintData(DefaultProxnroll.getDataHarwareIdentifier())      
-def controlResumeCardTracking(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlResumeCardTracking())
-def controlSuspendCardTracking(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlSuspendCardTracking())
-def controlStopRFField(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlStopRFField())
-def controlStartRFField(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlStartRFField())
-def controlResetRFField(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlResetRFField())
-def controlTCLDeactivation(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlTCLDeactivation())
-def controlTCLActivationTypeA(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlTCLActivationTypeA())
-def controlTCLActivationTypeB(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlTCLActivationTypeB())
-def controlDisableNextTCL(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlDisableNextTCL())
-def controlDisableEveryTCL(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlDisableEveryTCL())
-def controlEnableTCLAgain(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlEnableTCLAgain())
-def controlResetAfterNextDisconnectAndDisableNextTCL(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlResetAfterNextDisconnectAndDisableNextTCL())
-def controlStop(envi,args):
-    Executer.executeAPDU(DefaultProxnroll.slotControlStop())
-
 def testInstruction():
     pass
-    
-def readInstruction(envi,args):
-    if len(args) == 0:
-        Executer.executeAPDUAndPrintData(DefaultProxnroll.readBinary())
-    else:
-        Executer.executeAPDUAndPrintData(DefaultProxnroll.readBinary(args[0]))
-        
-
-
-t = tokenValueArgChecker(["off","on","auto","slow","quick","beat"])
-Executer.addCommand(["proxnroll","setlight"],                               "proxnroll setlight",                     "",True,setLedColorFun,MultiArgsChecker([t,t],[t,t,t]))
+            
+t = tokenValueArgChecker({"off":ProxnrollAPDUBuilder.colorOFF,"on":ProxnrollAPDUBuilder.colorON,"auto":ProxnrollAPDUBuilder.colorAUTO,"slow":ProxnrollAPDUBuilder.colorSLOW,"quick":ProxnrollAPDUBuilder.colorQUICK,"beat":ProxnrollAPDUBuilder.colorBEAT})
 i0to60000 = IntegerArgChecker(0,60000)
-Executer.addCommand(["proxnroll","setbuzzer"],                              "proxnroll setbuzzer",                    "",True,setBuzzerDuration,MultiArgsChecker([],[i0to60000]))
 
-speedToken = tokenValueArgChecker(["9600","115200"])
-Executer.addCommand(["proxnroll","calypso","setspeed"],                     "proxnroll calypso set speed",            "",True,calypsoSpeed,DefaultArgsChecker([speedToken]))
-Executer.addCommand(["proxnroll","calypso","enabledigestupdate"],           "proxnroll calypso enable digest update", "",True,enableCalypsoDigestUpdate,None)
-Executer.addCommand(["proxnroll","calypso","disabledigestupdate"],          "proxnroll calypso disable digest update","",True,enableCalypsoDigestUpdate,None)
 
-Executer.addCommand(["proxnroll","information","vendor"],                   "proxnroll vendor name",                  "",True,vendorName,None)
-Executer.addCommand(["proxnroll","information","product","name"],           "proxnroll product name",                 "",True,productName,None)
-Executer.addCommand(["proxnroll","information","product","serialString"],   "proxnroll product serial",               "",True,productSerial,None)
-Executer.addCommand(["proxnroll","information","product","usbidentifiel"],  "proxnroll product usb identifier",       "",True,productUSBIdentifier,None)
-Executer.addCommand(["proxnroll","information","product","version"],        "proxnroll product version",              "",True,productVersion,None)
-Executer.addCommand(["proxnroll","information","card","serial"],            "proxnroll product version",              "",True,cardSerialNumber,None)
-Executer.addCommand(["proxnroll","information","card","ats"],               "proxnroll product version",              "",True,cardATS,None)
-Executer.addCommand(["proxnroll","information","card","completeIdentifier"],"proxnroll product version",              "",True,cardCompleteIdentifier,None)
-Executer.addCommand(["proxnroll","information","card","type"],              "proxnroll product version",              "",True,cardType,None)
-Executer.addCommand(["proxnroll","information","card","shortSerial"],       "proxnroll product version",              "",True,cardShortSerialNumber,None)
-Executer.addCommand(["proxnroll","information","card","atr"],               "proxnroll product version",              "",True,cardATR,None)
-Executer.addCommand(["proxnroll","information","product","serial"],         "proxnroll product version",              "",True,productSerialNumber,None)
-Executer.addCommand(["proxnroll","information","harwareIdentifier"],        "proxnroll product version",              "",True,harwareIdentifier,None)
+Executer.addCommand(["proxnroll","setlight"],                               "proxnroll setlight",                     ""
+                ,True,ProxnrollAPDUBuilder.setLedColorFun,MultiArgsChecker([("red",t),("green",t)],[("red",t),("green",t),("yellow_blue",t)]),resultHandlerAPDU)
+Executer.addCommand(["proxnroll","setbuzzer"],                              "proxnroll setbuzzer",                    ""
+                ,True,ProxnrollAPDUBuilder.setBuzzerDuration,                                  MultiArgsChecker([],[("duration",i0to60000)]),resultHandlerAPDU)
+Executer.addCommand(["proxnroll","calypso","setspeed","9600"],              "proxnroll calypso set speed 9600"       ,""
+                ,True,ProxnrollAPDUBuilder.configureCalypsoSamSetSpeed9600,                    None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","calypso","setspeed","115200"],            "proxnroll calypso set speed 115200"     ,""
+                ,True,ProxnrollAPDUBuilder.configureCalypsoSamSetSpeed115200,              None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","calypso","enabledigestupdate"],           "proxnroll calypso enable digest update" ,""
+                ,True,ProxnrollAPDUBuilder.configureCalypsoSamEnableInternalDigestUpdate       ,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","calypso","disabledigestupdate"],          "proxnroll calypso disable digest update",""
+                ,True,ProxnrollAPDUBuilder.configureCalypsoSamDisableInternalDigestUpdate      ,None,resultHandlerAPDU)
+                
+Executer.addCommand(["proxnroll","information","vendor"],                   "proxnroll vendor name",                  ""
+                ,True,ProxnrollAPDUBuilder.getDataVendorName                                   ,None,resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(["proxnroll","information","product","name"],           "proxnroll product name",                 ""
+                ,True,ProxnrollAPDUBuilder.getDataProductName                                  ,None,resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(["proxnroll","information","product","serialString"],   "proxnroll product serial",               ""
+                ,True,ProxnrollAPDUBuilder.getDataProductSerialNumber                          ,None,resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(["proxnroll","information","product","usbidentifiel"],  "proxnroll product usb identifier",       ""
+                ,True,ProxnrollAPDUBuilder.getDataProductUSBIdentifier                         ,None,resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(["proxnroll","information","product","version"],        "proxnroll product version",              ""
+                ,True,ProxnrollAPDUBuilder.getDataProductVersion                               ,None,resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(["proxnroll","information","card","serial"],            "proxnroll product version",              ""
+                ,True,ProxnrollAPDUBuilder.getDataCardSerialNumber                             ,None,resultHandlerAPDUAndPrintData)
+                
+Executer.addCommand(["proxnroll","information","card","ats"],               True,ProxnrollAPDUBuilder.getDataCardATS               , None,resultHandlerAPDUAndPrintData)
+Executer.addCommand(["proxnroll","information","card","completeIdentifier"],True,ProxnrollAPDUBuilder.getDataCardCompleteIdentifier, None,resultHandlerAPDUAndPrintData)
+Executer.addCommand(["proxnroll","information","card","type"],              True,ProxnrollAPDUBuilder.getDataCardType              , None,resultHandlerAPDUAndPrintData)
+Executer.addCommand(["proxnroll","information","card","shortSerial"],       True,ProxnrollAPDUBuilder.getDataCardShortSerialNumber , None,resultHandlerAPDUAndPrintData)
+Executer.addCommand(["proxnroll","information","card","atr"],               True,ProxnrollAPDUBuilder.getDataCardATR               , None,resultHandlerAPDUAndPrintData)
+Executer.addCommand(["proxnroll","information","product","serial"],         True,ProxnrollAPDUBuilder.getDataProductSerialNumber   , None,resultHandlerAPDUAndPrintData)
+Executer.addCommand(["proxnroll","information","harwareIdentifier"],        True,ProxnrollAPDUBuilder.getDataHarwareIdentifier     , None,resultHandlerAPDUAndPrintData)
 
-Executer.addCommand(["proxnroll","control","tracking","resume"],            "proxnroll control ",                     "",True,controlResumeCardTracking,None)
-Executer.addCommand(["proxnroll","control","tracking","suspend"],           "proxnroll control ",                     "",True,controlSuspendCardTracking,None)
-Executer.addCommand(["proxnroll","control","rffield","stop"],               "proxnroll control ",                     "",True,controlStopRFField,None)
-Executer.addCommand(["proxnroll","control","rffield","start"],              "proxnroll control ",                     "",True,controlStartRFField,None)
-Executer.addCommand(["proxnroll","control","rffield","reset"],              "proxnroll control ",                     "",True,controlResetRFField,None)
+Executer.addCommand(["proxnroll","control","tracking","resume"],            True,ProxnrollAPDUBuilder.slotControlResumeCardTracking, None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","tracking","suspend"],           True,ProxnrollAPDUBuilder.slotControlSuspendCardTracking,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","rffield","stop"],               True,ProxnrollAPDUBuilder.slotControlStopRFField        ,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","rffield","start"],              True,ProxnrollAPDUBuilder.slotControlStartRFField       ,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","rffield","reset"],              True,ProxnrollAPDUBuilder.slotControlResetRFField       ,None,resultHandlerAPDU)
 
-Executer.addCommand(["proxnroll","control","t=cl","deactivation"],          "proxnroll control ",                     "",True,controlTCLDeactivation,None)
-Executer.addCommand(["proxnroll","control","t=cl","activation","a"],        "proxnroll control ",                     "",True,controlTCLActivationTypeA,None)
-Executer.addCommand(["proxnroll","control","t=cl","activation","b"],        "proxnroll control ",                     "",True,controlTCLActivationTypeB,None)
-Executer.addCommand(["proxnroll","control","t=cl","disable","next"],        "proxnroll control ",                     "",True,controlDisableNextTCL,None)
-Executer.addCommand(["proxnroll","control","t=cl","disable","every"],       "proxnroll control ",                     "",True,controlDisableEveryTCL,None)
-Executer.addCommand(["proxnroll","control","t=cl","enable"],                "proxnroll control ",                     "",True,controlEnableTCLAgain,None)
-Executer.addCommand(["proxnroll","control","t=cl","reset"],                 "proxnroll control ",                     "",True,controlResetAfterNextDisconnectAndDisableNextTCL,None)
+Executer.addCommand(["proxnroll","control","t=cl","deactivation"],          True,ProxnrollAPDUBuilder.slotControlTCLDeactivation    ,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","t=cl","activation","a"],        True,ProxnrollAPDUBuilder.slotControlTCLActivationTypeA ,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","t=cl","activation","b"],        True,ProxnrollAPDUBuilder.slotControlTCLActivationTypeB ,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","t=cl","disable","next"],        True,ProxnrollAPDUBuilder.slotControlDisableNextTCL     ,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","t=cl","disable","every"],       True,ProxnrollAPDUBuilder.slotControlDisableEveryTCL    ,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","t=cl","enable"],                True,ProxnrollAPDUBuilder.slotControlEnableTCLAgain     ,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","t=cl","reset"],                 True,ProxnrollAPDUBuilder.slotControlResetAfterNextDisconnectAndDisableNextTCL,None,resultHandlerAPDU)
 
-Executer.addCommand(["proxnroll","control","stop"],                         "proxnroll control ",                     "",True,controlStop,None,resultHandlerAPDU)
+Executer.addCommand(["proxnroll","control","stop"],                         True,ProxnrollAPDUBuilder.slotControlStop               ,None,resultHandlerAPDU)
 
 #TODO
-Executer.addCommand(["proxnroll","test"],                                   "proxnroll test instruction",             "",True,testInstruction,None)
+Executer.addCommand(["proxnroll","test"],                                   ,True,testInstruction,None)
 
 #TODO def encapsulate(self,datas,protocolType=0x00,timeoutType=0x00,defaultSW = True):
 
@@ -505,7 +439,7 @@ Executer.addCommand(["proxnroll","test"],                                   "pro
 
     #TODO def readBinary(self, address = 0):
 i = IntegerArgChecker()
-Executer.addCommand(["proxnroll","read"],                                   "proxnroll test instruction",             "",True,readInstruction,MultiArgsChecker([],[i]))
+Executer.addCommand(["proxnroll","read"],                                   "proxnroll read instruction",             "",True,ProxnrollAPDUBuilder.readBinary,                                          MultiArgsChecker([],[("address",i)]),resultHandlerAPDUAndPrintData)
 
     #TODO def mifareClassicRead(self,blockNumber,Key = None):
 

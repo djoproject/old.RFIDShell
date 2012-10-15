@@ -16,12 +16,14 @@
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from exception import argException
+from exception import argException,argExecutionException
 from tries.exception import triesException
 from tries.multiLevelTries import multiLevelTries
 import readline
 import os
 import sys
+import inspect
+from ordereddict import OrderedDict
 
 histfile = os.path.join(os.path.expanduser("~"), ".rfidShell")
 try:
@@ -53,36 +55,113 @@ class CommandExecuter():
         self.levelTries = multiLevelTries()
         self.envi["levelTries"] = self.levelTries
         
-    def addCommand(self,CommandStrings,name,helpMessage,showInHelp,com,argChecker=None,resultHandler=defaultResultHandler):
-        c = Command(name,helpMessage,showInHelp,com,argChecker,resultHandler)
+    def addCommand(self,CommandStrings,showInHelp,com,argChecker=None,resultHandler=defaultResultHandler):
+        name = ""
+        for s in CommandStrings:
+            name += s+""
+        
+        c = Command(name,com.__doc__,showInHelp,com,argChecker,resultHandler)
         try:
             self.levelTries.addEntry(CommandStrings,c)
+            return c
         except triesException as e:
-            print "   "+str(e)
+            print self.printOnShell(str(e))
+            
+    def addAlias(self,CommandStrings,AliasCommandStrings):
+        #pas aussi simple
+            #on doit pouvoir gerer des alias avec des arguments fixe
         
-    def executeCommand(self,CommandStrings):
-        #look after the command
-        try:
-            triesNode,args = self.levelTries.searchEntryFromMultiplePrefix(CommandStrings)
-            commandToExecute = triesNode.value
-        except triesException as e:
-            print "   "+str(e)
-            return
+        pass #TODO
         
+    def executeCommand(self,CommandStringsList):
         
-        #check the args
-        if commandToExecute.argChecker != None:
+        previousValue = None
+        for indice in range(0,len(CommandStringsList)):
+            CommandStrings = CommandStringsList[indice]
+        
+            #look after the command
             try:
-                argsValue = commandToExecute.argChecker.checkArgs(args)
-            except argException as a:
-                print "   "+str(a)
+                triesNode,args = self.levelTries.searchEntryFromMultiplePrefix(CommandStrings)
+                commandToExecute = triesNode.value
+            except triesException as e:
+                print "   "+str(e)
                 return
-        else:
-            argsValue = []
+            
+            #args est une liste
+            
+            #append the previous value to the args
+            if previousValue != None:
+                if isinstance(previousValue,list):
+                    for item in previousValue:
+                        args.append(item)
+                else:
+                    args.append(previousValue)
         
-        #call the function
-        result = commandToExecute.command(self.envi,argsValue)
-        commandToExecute.resultHandler(result)
+            #check the args
+            if commandToExecute.argChecker != None:
+                try:
+                    argsValueDico = commandToExecute.argChecker.checkArgs(args)
+                except argException as a:
+                    print "   "+str(a)
+                    return
+            else:
+                argsValueDico = {}
+            
+            #argsValueDico est un dico
+            
+            #parse the command to execute
+            inspect_result = inspect.getargspec(commandToExecute.command)
+        
+            #bind the args
+            nextArgs = {}
+            index = 0
+
+            for argname in inspect_result.args:
+                if argname in argsValueDico:
+                    nextArgs[argname] = argsValueDico[argname]
+                    del argsValueDico[argname]
+                elif argname == "envi":
+                    nextArgs["envi"] = self.envi
+                elif argname == "args":
+                    nextArgs["args"] = [v for (k, v) in argsValueDico.iteritems()] #argsValueDico
+                #elif argname == "previous":
+                #    nextArgs["previous"] = previousValue
+                else:              
+                    if index < (len(inspect_result.args) - len(inspect_result.defaults)):
+                        #on assigne a None
+                        self.printOnShell("WARNING unknwon arg <"+str(argname)+"> in command "+commandToExecute.name)
+                        nextArgs[argname] = None
+                    else:
+                        #Si c'est un argument avec une valeur par defaut, ne pas assigner  
+                        nextArgs[argname] = inspect_result.defaults[index - (len(inspect_result.args) - len(inspect_result.defaults))]
+        
+                index += 1
+                
+            #call the function
+            #TODO catch execution error
+            
+            try:
+                result = commandToExecute.command(**nextArgs)
+            except argExecutionException as aee:
+                self.printOnShell(""+str(aee)+" at "+str(CommandStrings))
+                return
+            #TODO uncomment after debug
+            #except Exception as ex:
+            #    self.printOnShell("SEVERE : "+str(ex)+" at "+str(CommandStrings))
+            #    return
+            
+            if indice == (len(CommandStringsList)-1):
+                try:
+                    commandToExecute.resultHandler(result) #last item
+                except argExecutionException as aee:
+                    self.printOnShell(""+str(aee)+" at "+str(CommandStrings))
+                    return
+                #TODO uncomment after debug
+                #except Exception as ex:
+                #    self.printOnShell("SEVERE : "+str(ex)+" at "+str(CommandStrings))
+                #    return
+            else:
+                previousValue = result
         
     def mainLoop(self):
         while True:
@@ -95,14 +174,37 @@ class CommandExecuter():
                 print "\n   end of stream"
                 break
             
-            cmd = cmd.split(" ")
+            cmd = cmd.split("|")
             if len(cmd) < 0 :
                 print "   split command error"
                 continue
+            
+            innerCommand = []    
+            for inner in cmd:
+                inner = inner.strip(' \t\n\r')
+                if len(inner) > 0:
+                    inner = inner.split(" ")
+                    if len(inner) < 0 :
+                        print "   split command error"
+                        innerCommand = []
+                        break
+                    
+                    finalCmd = []
+                    for cmd in inner:
+                        cmd = cmd.strip(' \t\n\r')
+                        if len(cmd) > 0 :
+                            finalCmd.append(cmd)
+                        
+                    if len(finalCmd) > 0:
+                        innerCommand.append(finalCmd)
+            
+            if len(innerCommand) < 1:
+                continue
+                    
+            #print innerCommand
+                        
                 
-            #TODO retirer les commandes vide de la liste cmd
-                
-            self.executeCommand(cmd)
+            self.executeCommand(innerCommand)
     
     ###############################################################################################
     ##### Readline REPL ###########################################################################
@@ -122,32 +224,50 @@ class CommandExecuter():
     def printOnShell(self,toPrint):
         print "   "+str(toPrint)
 
+
+###############################################################################################
+##### ArgsChecker #############################################################################
+###############################################################################################
 class ArgsChecker():
     def __init__(self):
         pass
     
-    def checkArgs(self,args):
-        return args
+    #
+    # @argsList, une liste de string
+    # @return, un dico trie des arguments et de leur valeur : <name,value>
+    # 
+    def checkArgs(self,argsList):
+        pass
         
 class DefaultArgsChecker(ArgsChecker):
     def __init__(self, argCheckerList):
-        self.argCheckerList = argCheckerList
+        self.argCheckerList = OrderedDict(argCheckerList)
     
     def checkArgs(self,args):
         #check the arguments length
         if len(args) < len(self.argCheckerList):
             raise argException("Argument missing, expected "+str(len(self.argCheckerList))+", get "+str(len(args)))
         
-        ret = []
+        ret = OrderedDict()
         #check every argument
-        for i in range(0,len(self.argCheckerList)):
-            ret.append(self.argCheckerList[i].getValue(args[i],i))
-            
+        #ret = []
+        #for i in range(0,len(self.argCheckerList)):
+        #    ret.append(self.argCheckerList[i].getValue(args[i],i))
+        
+        i=0
+        for k in self.argCheckerList:
+            ret[k] = self.argCheckerList[k].getValue(args[i],i)
+            i += 1
+        
         return ret
                 
 class MultiArgsChecker(ArgsChecker):
-    def __init__(self, *argCheckerList):
-        self.argCheckerList = argCheckerList
+    #TODO ce serait plus interessant d'encapsuler des DefaultArgsChecker et des AllTheSameChecker
+    
+    def __init__(self, *argsCheckerList):
+        self.argCheckerList = []
+        for argsChecker in argsCheckerList:
+            self.argCheckerList.append(OrderedDict(argsChecker))
 
     def checkArgs(self,args):
         expectedCount = []
@@ -156,11 +276,18 @@ class MultiArgsChecker(ArgsChecker):
             
             #TODO si un checker avec un bon nombre d'argument ne match pas, essayer les suivant
             if len(checkerList) == len(args):
-                ret = []
-                for i in range(0,len(checkerList)):
-                    ret.append(checkerList[i].getValue(args[i],i))   
+                #ret = []
+                #for i in range(0,len(checkerList)):
+                #    ret.append(checkerList[i].getValue(args[i],i))
+                
+                ret = OrderedDict()
+                i=0
+                for k in checkerList:
+                    ret[k] = checkerList[k].getValue(args[i],i)
+                    i += 1
+                
                 return ret
-                    
+            
             expectedCount.append(len(checkerList))
         
         #build error message
@@ -177,9 +304,10 @@ class MultiArgsChecker(ArgsChecker):
             raise argException("Argument count is wrong, expected "+s+" arguments, get "+str(len(args)))
         
 class AllTheSameChecker(ArgsChecker):
-    def __init__(self, argChecker,count=None):
+    def __init__(self, argChecker, argName,count=None):
         self.argChecker = argChecker
         self.count = count
+        self.argName = argName
         
     def checkArgs(self,args):
         #check the arguments length
@@ -193,13 +321,14 @@ class AllTheSameChecker(ArgsChecker):
         
         ret = []
         #check every argument
-        
-        
         for i in range(0,limit):
             ret.append(self.argChecker.getValue(args[i],i))
             
-        return ret
-#######################################
+        return {self.argName:ret}
+        
+###############################################################################################
+##### ArgChecker #############################################################################
+###############################################################################################
 
 class ArgChecker(object):
     
@@ -275,13 +404,17 @@ class hexaArgChecker(ArgChecker):
                 raise argException("(hexadecimal) Argument "+str(argNumber)+" : the integer arg can't be None")
             else:
                 raise argException("(hexadecimal) Argument : the integer arg can't be None")
-        try:
-            castedValue = int(value,16)
-        except ValueError:
-            if argNumber != None:
-                raise argException("(hexadecimal) Argument "+str(argNumber)+" : this arg is not a valid integer")
-            else:
-                raise argException("(hexadecimal) Argument : this arg is not a valid integer")
+        
+        if type(value) != int:
+            try:
+                castedValue = int(value,16)
+            except ValueError:
+                if argNumber != None:
+                    raise argException("(hexadecimal) Argument "+str(argNumber)+" : this arg is not a valid integer")
+                else:
+                    raise argException("(hexadecimal) Argument : this arg is not a valid integer")
+        else:
+            castedValue = value
         
         if self.minimum != None:
             if castedValue < self.minimum:
@@ -298,24 +431,44 @@ class hexaArgChecker(ArgChecker):
                     raise argException("(hexadecimal) Argument : the biggest value must be lower or equal than "+str(self.maximum))
 
     def getValue(self,value,argNumber=None):
-        self.checkValue(value)
-        return int(super(hexaArgChecker,self).getValue(value,argNumber),16)
+        self.checkValue(value,argNumber)
+        v = super(hexaArgChecker,self).getValue(value,argNumber)
+        if type(v) != int:
+            return int(v,16)
+        else:
+            return v
 
 class tokenValueArgChecker(stringArgChecker):
     #TODO stocker les tokens dans un tries
     
-    def __init__(self, tokenList):
-        self.tokenList = tokenList
+    def __init__(self, tokenDico):
+        #TODO if type(tokenDico) != dict
+        
+        self.tokenDico = tokenDico
     
     def checkValue(self, value,argNumber=None):
         super(tokenValueArgChecker,self).checkValue(value,argNumber)
             
-        if value not in self.tokenList:
+        if value not in self.tokenDico:
             if argNumber != None:
                 raise argException("(Token) Argument "+str(argNumber)+" : this arg is not a valid token")
             else:
                 raise argException("(Token) Argument : this arg is not a valid token")
-                
-                
+    
+    def getValue(self,value,argNumber=None):
+        self.checkValue(value,argNumber)
+        
+        return self.tokenDico[value]
                 
 Executer = CommandExecuter()
+
+def stringListResultHandler(result):
+    if result == None or len(result) == 0:
+        Executer.printOnShell("no item available")
+        return
+        
+    for i in result:
+        Executer.printOnShell(i)
+        
+def printResultHandler(result):
+    print str(result)

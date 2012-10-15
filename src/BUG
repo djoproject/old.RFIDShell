@@ -1,3 +1,8 @@
 TODO
 
 -monitor data deconne quand pas de context
+	+- corrigé, mais c'est pas encore génial
+	
+-parfois un "not a list of bytes" qui apparait, étrange
+
+-quand on déconnecte un lecteur avec une carte connecté, il y a parfois une exception qui saute dans un des threads :/

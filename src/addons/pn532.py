@@ -1,121 +1,179 @@
-from apdu.apdu import ApduPn53x
+from apdu.apdu import Apdu
 from apdu.exception import apduBuilderException
+from arg.args import *
+
+class ApduPn53x(Apdu):
+    def __init__(self,ins,data = []):
+        self.extend([0xD4,ins])
+        if len(data) > 0:
+            self.extend(data)
 
 class pn532APDUBuilder(object):
     
     #Miscellaneous
     
+    @staticmethod
     def Diagnose():
         pass#TODO
-        
+    
+    @staticmethod
     def GetFirmwareVersion():
         return ApduPn53x(0x02)
-        
+    
+    @staticmethod
     def GetGeneralStatus():
         return ApduPn53x(0x04)
     
+    @staticmethod
     def ReadRegister():
         pass#TODO
     
+    @staticmethod
     def WriteRegister():
         pass#TODO
     
+    @staticmethod
     def ReadGPIO():
         return ApduPn53x(0x0c)
     
+    @staticmethod
     def WriteGPIO():
         pass#TODO
     
+    @staticmethod
     def SetSerialBaudRate():
         pass#TODO
     
+    @staticmethod
     def SetParameters():
         pass#TODO
     
+    @staticmethod
     def SAMConfiguration():
         pass#TODO
     
+    @staticmethod
     def PowerDown():
         pass#TODO
     
     #RF communication
     
+    @staticmethod
     def RFConfiguration():
         pass#TODO
     
+    @staticmethod
     def RFRegulationTest():
         pass#TODO
     
     #Initiator
     
+    @staticmethod
     def InJumpForDEP():
         pass#TODO
     
+    @staticmethod
     def InJumpForPSL():
         pass#TODO
     
-    def InListPassiveTarget():
-        pass#TODO
+    #poll
+    BrTyTypeA = 0x00
+    BrTyFelica212 = 0x01
+    BrTyFelica424 = 0x02
+    BrTyTypeB = 0x03
+    BrTyInnovisionJewel = 0x04
     
+    @staticmethod
+    def InListPassiveTarget(BrTy,MaxTg=1,InitiatorData=[]):
+        if MaxTg < 1 or MaxTg > 2:
+            raise apduBuilderException("invalid argument MaxTg, a value between 1 and 2 was expected, got "+str(MaxTg))
+    
+        if BrTy < 0 or BrTy > 4:
+            raise apduBuilderException("invalid argument BrTy, a value between 0 and 4 was expected, got "+str(BrTy))
+    
+        data = [MaxTg,BrTy]
+        data.extend(InitiatorData)
+        return ApduPn53x(0x4A,data)
+        
+    @staticmethod
     def InATR():
         pass#TODO
     
+    @staticmethod
     def InPSL():
         pass#TODO
     
-    def InDataExchange():
-        pass#TODO
+    @staticmethod
+    def InDataExchange(target,args=[]):
+        if target < 1 or target > 2:
+            raise apduBuilderException("invalid argument target, a value between 1 and 2 was expected, got "+str(target))
+        
+        return ApduPn53x(0x02,args)
     
+    @staticmethod
     def InCommunicateThru():
         pass#TODO
     
     AllTarget = 0x00
     Target1 = 0x01
     Target2 = 0x02
+    
+    @staticmethod
     def InDeselect(target = 0):
         if target < 0 or target > 2:
             raise apduBuilderException("invalid argument target, a value between 0 and 2 was expected, got "+str(target))
             
         return ApduPn53x(0x44,[target])
     
+    @staticmethod
     def InRelease(target = 0):
         if target < 0 or target > 2:
             raise apduBuilderException("invalid argument target, a value between 0 and 2 was expected, got "+str(target))
             
         return ApduPn53x(0x52,[target])
     
+    @staticmethod
     def InSelect():
         if target < 0 or target > 2:
             raise apduBuilderException("invalid argument target, a value between 0 and 2 was expected, got "+str(target))
             
-        return ApduPn53x(0x52,[target])
+        return ApduPn53x(0x54,[target])
     
+    @staticmethod
     def InAutoPoll():
         pass#TODO
     
     #Target
     
+    @staticmethod
     def TgInitAsTarget():
         pass#TODO
     
+    @staticmethod
     def TgSetGeneralBytes():
         pass#TODO
     
+    @staticmethod
     def TgGetData():
         return ApduPn53x(0x86)
     
+    @staticmethod
     def TgSetData():
         pass#TODO
     
+    @staticmethod
     def TgSetMetaData():
         pass#TODO
     
+    @staticmethod
     def TgGetInitiatorCommand():
         return ApduPn53x(0x88)
     
+    @staticmethod
     def TgResponseToInitiator():
         pass#TODO
     
+    @staticmethod
     def TgGetTargetStatus():
         return ApduPn53x(0x8A)
 
@@ -185,14 +243,24 @@ def pn532ParseAnswer(Answer):
     if Answer[0] != 0xD5:
         return "invalid answer header"
     
-    if Answer[1] == 0x03
+    if Answer[1] == 0x03:
         if len(Answer) != 6:
             return "invalid answer"
         
         return "IC = %x, Ver = %x, Rev = %x,"%(Answer[2],Answer[3],Answer[4])+" ISO18092 initiator support = "+str(Answer[5]&0x08)+" ISO18092 target support = "+str(Answer[5]&0x04)+" ISO/IEC 14443 TypeB = "+str(Answer[5]&0x02)+" ISO/IEC 14443 TypeA = "+str(Answer[5]&0x01)
+
+try:
+    Executer
+except NameError:
+    print "  No variable Executer found, this is an addon, it can't be executed alone"
+    exit()        
         
-        
-    
+Executer.addCommand(["pn532","firmware"],"get firmware version","",True,pn532APDUBuilder.GetFirmwareVersion,None,stringListResultHandler)
+
+t = tokenValueArgChecker({"a":pn532APDUBuilder.BrTyTypeA,"b":pn532APDUBuilder.BrTyFelica212,"felica212":pn532APDUBuilder.BrTyFelica424,"felica424":pn532APDUBuilder.BrTyTypeB,"innovision":pn532APDUBuilder.BrTyInnovisionJewel})
+i = IntegerArgChecker(1,2)
+Executer.addCommand(["pn532","inlistpassivetarget"],"","",True,pn532APDUBuilder.InListPassiveTarget,MultiArgsChecker([("BrTy",t)],[("BrTy",t),("MaxTg",i)]),stringListResultHandler)
+#Executer.addCommand(["pn532","indataexchange"],"","",True,pn532APDUBuilder.InListPassiveTarget,MultiArgsChecker([("target",i),("args",???)]),stringListResultHandler)
     
     
     

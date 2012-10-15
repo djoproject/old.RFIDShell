@@ -3,31 +3,26 @@
 from arg.args import Executer
 from smartcard.sw.SWExceptions import CheckingErrorException,SWException
 from smartcard.util import toHexString
+from apduAnswer import ApduAnswer
+from arg.exception import argExecutionException
 
-def stringListResultHandler(result):
-    if result == None or len(result) == 0:
-        Executer.printOnShell("no item available")
-        return
-        
-    for i in result:
-        Executer.printOnShell(i)
 
 def resultHandlerAPDU(apdu):
+    "execute an apdu"
+    
     if "connection" not in Executer.envi or Executer.envi["connection"] == None:
-        Executer.printOnShell("no connection available")
-        return
+        raise argExecutionException("no connection available")
         
     try:
-        data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
+        Executer.envi["connection"].transmit(apdu.toHexArray())
     except SWException as ex:
-        Executer.printOnShell("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
-    except Exception as e:
-        Executer.printOnShell(str(e))
+        raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
     
 def resultHandlerAPDUAndConvertDataToString(apdu):
+    "execute an apdu and convert the hexa result into a human readable string"
+    
     if "connection" not in Executer.envi or Executer.envi["connection"] == None:
-        Executer.printOnShell("no connection available")
-        return
+        raise argExecutionException("no connection available")
         
     try:
         data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
@@ -35,43 +30,42 @@ def resultHandlerAPDUAndConvertDataToString(apdu):
         for c in data:
             s += chr(c)
         Executer.printOnShell("data = "+s)
+        
     except SWException as ex:
-        Executer.printOnShell("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
-    except Exception as e:
-        Executer.printOnShell(str(e))
+        raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
     
 def resultHandlerAPDUAndPrintData(apdu):
+    "execute an apdu and print the result"
+    
     if "connection" not in Executer.envi or Executer.envi["connection"] == None:
-        Executer.printOnShell("no connection available")
-        return
+        raise argExecutionException("no connection available")
         
     try:
         data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
         Executer.printOnShell(toHexString(data))
     except SWException as ex:
-        Executer.printOnShell( "%x %x : " % (ex.sw1, ex.sw2)+ex.message)
-    except Exception as e:
-        Executer.printOnShell(str(e))
+        raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
         
 def resultHandlerAPDUAndPrintDataAndSW(apdu):
+    "execute an apdu and print the result and the status word"
+    
     if "connection" not in Executer.envi or Executer.envi["connection"] == None:
-        Executer.printOnShell("no connection available")
-        return
+        raise argExecutionException("no connection available")
         
     try:
         data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
         Executer.printOnShell("%x %x : " % (sw1, sw2)+toHexString(data))
     except SWException as ex:
-        Executer.printOnShell( "%x %x : " % (ex.sw1, ex.sw2)+ex.message)
-    except Exception as e:
-        Executer.printOnShell(str(e))
-
-#def executeAPDU(con,apdu):
-    #TODO
-
+        raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
         
-#def executeAPDUAndConvertDataToString(con,apdu):
-    #TODO
+def resultHandlerAPDUreturnDATAandSW(apdu):
+    "execute an apdu and print the result and the status word"
 
-#def executeAPDUAndPrintData(con,apdu):
-    #TODO
+    if "connection" not in Executer.envi or Executer.envi["connection"] == None:
+        raise argExecutionException("no connection available")
+
+    try:
+        data, sw1, sw2 =  Executer.envi["connection"].transmit(apdu.toHexArray())
+        return ApduAnswer(sw1,sw2,data)
+    except SWException as ex:
+        raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
