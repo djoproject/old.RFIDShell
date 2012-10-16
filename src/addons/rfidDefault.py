@@ -234,6 +234,9 @@ def listReaderFun(envi,args):
     #    for r in readers():
     #        print "\t"+str(indice)+" : "+str(r)
     #        indice += 1
+    
+    #TODO manage ListReadersException
+    
     except Exception as e:
         Executer.printOnShell(str(e))
         return
@@ -486,7 +489,7 @@ Executer.addCommand(["disconnect"],                True,disconnectReaderFromCard
 #monitoring management
 Executer.addCommand(["monitor","all"],             True,monitorCardAll)
 Executer.addCommand(["monitor","reader"],          True,monitorReaderFun)
-Executer.addCommand(["monitor","card"],            True,monitorCardFun,              None,stringListResultHandler)
+Executer.addCommand(["monitor","card"],            True,monitorCardFun)
 Executer.addCommand(["monitor","data"],            True,monitorDataFun)
 
 Executer.addCommand(["disable","monitor","all"],   True,disableMonitorCardAll)

@@ -120,6 +120,8 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
     @staticmethod
     def encapsulate(datas,protocolType=0x00,timeoutType=0x00,defaultSW = True):
         
+        #TODO limite de 255
+        
         if timeoutType < 0 or timeoutType > 0x0D:
             raise apduBuilderException("invalid argument timeoutType, a value between 0 and 13 was expected, got "+str(timeoutType))
             
@@ -254,7 +256,7 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
             return ApduDefault(cla=0xFF,ins=0xF3,p1=0x00,p2=blockNumber,data=Key)
         
     @staticmethod
-    def updateBinary(datas):
+    def updateBinary(address=0,datas):
         if address < 0 or address > 65535:
             raise apduBuilderException("invalid argument address, a value between 0 and 65535 was expected, got "+str(address))
         

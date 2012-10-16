@@ -4,7 +4,7 @@ from apdu.apdu import Apdu
 
 class ApduDesfire(Apdu):
     def __init__(self,ins,data = []):
-        self.append(ins)
+        self.extend([0x90, ins])
         if len(data) > 0:
             self.extend(data)
 

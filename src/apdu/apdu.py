@@ -51,7 +51,7 @@ class Apdu(list):
         
 class ApduDefault(Apdu):
     "apdu abstract class"
-    def __init__(self,cla,ins,p1,p2,data=[],expected_answer=0):
+    def __init__(self,cla,ins,p1=0,p2=0,data=[],expected_answer=0):
         self.extend([cla,ins,p1,p2])
         
         if len(data) > 0:
