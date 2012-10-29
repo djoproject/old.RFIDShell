@@ -1,6 +1,7 @@
 from apdu.apdu import Apdu
 from apdu.exception import apduBuilderException
 from arg.args import *
+from apdu.apduExecuter import *
 
 class ApduPn53x(Apdu):
     def __init__(self,ins,data = []):
@@ -18,6 +19,8 @@ class pn532APDUBuilder(object):
     
     @staticmethod
     def GetFirmwareVersion():
+        "get firmware version"
+        
         return ApduPn53x(0x02)
     
     @staticmethod
@@ -255,12 +258,12 @@ except NameError:
     print "  No variable Executer found, this is an addon, it can't be executed alone"
     exit()        
         
-Executer.addCommand(["pn532","firmware"],"get firmware version","",True,pn532APDUBuilder.GetFirmwareVersion,None,stringListResultHandler)
+Executer.addCommand(CommandStrings=["pn532","firmware"],            preProcess=pn532APDUBuilder.GetFirmwareVersion,     process=executeAPDU,postProcess=stringListResultHandler)
 
 t = tokenValueArgChecker({"a":pn532APDUBuilder.BrTyTypeA,"b":pn532APDUBuilder.BrTyFelica212,"felica212":pn532APDUBuilder.BrTyFelica424,"felica424":pn532APDUBuilder.BrTyTypeB,"innovision":pn532APDUBuilder.BrTyInnovisionJewel})
-i = IntegerArgChecker(1,2)
-Executer.addCommand(["pn532","inlistpassivetarget"],"","",True,pn532APDUBuilder.InListPassiveTarget,MultiArgsChecker([("BrTy",t)],[("BrTy",t),("MaxTg",i)]),stringListResultHandler)
-#Executer.addCommand(["pn532","indataexchange"],"","",True,pn532APDUBuilder.InListPassiveTarget,MultiArgsChecker([("target",i),("args",???)]),stringListResultHandler)
+
+Executer.addCommand(CommandStrings=["pn532","inlistpassivetarget"], preProcess=pn532APDUBuilder.InListPassiveTarget,    process=executeAPDU,argChecker=DefaultArgsChecker([("BrTy",t),("MaxTg",IntegerArgChecker(1,2))],1),postProcess=resultHandlerAPDUAndPrintData)
+#Executer.addCommand(["pn532","indataexchange"],"","",True,pn532APDUBuilder.InListPassiveTarget,DefaultArgsChecker([("target",i),("args",???)]),stringListResultHandler)
     
     
     

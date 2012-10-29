@@ -9,7 +9,7 @@ from smartcard.System import readers
 from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
 from smartcard.ReaderMonitoring import ReaderMonitor, ReaderObserver
 from smartcard.CardMonitoring import CardMonitor, CardObserver
-from smartcard.util import toHexString
+from apdu.apdu import toHexString
 from smartcard.ATR import ATR
 
 from smartcard.pcsc.PCSCContext import PCSCContext
@@ -75,7 +75,7 @@ class ReaderManager( ReaderObserver ):
             if "connectedReader" in Executer.envi:
                 for reader in removedreaders:
                     if reader == Executer.envi["connectedReader"]:
-                        disconnectReaderFromCardFun(Executer.envi,[])
+                        disconnectReaderFromCardFun(Executer.envi)
                         Executer.printAsynchronousOnShell("WARNING : the reader has been removed, the connection is broken")
 
         if self.enable and len(r) > 0:
@@ -111,13 +111,17 @@ class CardManager( CardObserver ):
         self.enable = False
         self.cardList = []
         self.cardmonitor.addObserver( self )
+        self.autocon = False
     
     def update( self, observable, (addedcards, removedcards) ):
         r = ""
+        ac = ""
         if addedcards != None and len(addedcards) > 0:
             r += "Added cards" + str(addedcards) 
             for c in addedcards:
                 self.cardList.append(c)
+            
+            ac = self.autoConnect()
         
         if removedcards != None and len(removedcards) > 0:
             
@@ -130,11 +134,17 @@ class CardManager( CardObserver ):
                 self.cardList.remove(c)
 
                 if hasattr(c,'connection'):
-                    disconnectReaderFromCardFun(Executer.envi,[])
+                    disconnectReaderFromCardFun(Executer.envi)
                     Executer.printAsynchronousOnShell("WARNING : the card has been removed, the connection is broken")
             
         if self.enable and len(r) > 0:
+            if len(ac) > 0:
+                r += ac + "\n"
+            
             Executer.printAsynchronousOnShell(r)
+        else:
+            if len(ac) > 0:
+                Executer.printAsynchronousOnShell(ac)
         
     def activate(self):
         #if not self.enable:
@@ -147,7 +157,23 @@ class CardManager( CardObserver ):
         #    self.cardmonitor.deleteObserver(self)
         
         self.enable = False
-
+        
+    def enableAutoCon(self):
+        self.autocon = True
+        Executer.printOnShell(self.autoConnect())
+        
+    def disableAutoCon(self):
+        self.autocon = False
+        
+    def autoConnect(self):
+        if "connection" not in Executer.envi and self.autocon:
+            if len(self.cardList) == 1:
+                if connectReaderFromCardFun(Executer.envi):
+                    return "connected to a card"
+            else:
+                return "WARNING : autoconnect is enable but there is more than one card available"
+        
+        return None
 cardobserver = CardManager()
 
 ###############################################################################################
@@ -204,7 +230,7 @@ dataobserver = DataManager()
 ##### function declaration ####################################################################
 ###############################################################################################
 
-def listKeyFun(envi,args):
+def listKeyFun():
     "list the available key name"
     return keys.keys()
     #count = 0
@@ -215,17 +241,17 @@ def listKeyFun(envi,args):
     #if count == 0:
     #    Executer.printOnShell("no key available")
 
-def addKeyFun(name,args):
+def addKeyFun(name,key):
     "set a 6, 8 or 16 bytes key"
-    key = []    
-    for i in args:
-        key.append(args[i])
+    #key = []    
+    #for i in args:
+    #    key.append(args[i])
 
     print key
 
     keys[name] = key
 
-def listReaderFun(envi,args):
+def listReaderFun():
     "list all the reader available on the system"
     
     #indice = 0
@@ -247,7 +273,7 @@ def listReaderFun(envi,args):
         
     return r
 
-def monitorCardFun(envi,args):
+def monitorCardFun():
     "enable the card monitoring"
     
     if cardobserver.enable:
@@ -256,7 +282,7 @@ def monitorCardFun(envi,args):
         cardobserver.activate()
         Executer.printOnShell("Monitor cards : enable")
 
-def monitorReaderFun(envi,args):
+def monitorReaderFun():
     "enable the reader monitoring"
     
     if readerobserver.enable:
@@ -265,7 +291,7 @@ def monitorReaderFun(envi,args):
         readerobserver.activate()
         Executer.printOnShell("Monitor readers : enable")
 
-def monitorDataFun(envi,args):
+def monitorDataFun():
     "enable the data monitoring"
     
     if not dataobserver.available():
@@ -280,14 +306,14 @@ def monitorDataFun(envi,args):
         if dataobserver.enable:
             Executer.printOnShell("Monitor data : enable")
 
-def monitorCardAll(envi,args):
+def monitorCardAll():
     "enable the global monitoring"
     
-    monitorCardFun(envi,args)
-    monitorReaderFun(envi,args)
-    monitorDataFun(envi,args)
+    monitorCardFun()
+    monitorReaderFun()
+    monitorDataFun()
     
-def disableMonitorCardFun(envi,args):
+def disableMonitorCardFun():
     "disable the card monitoring"
     
     if cardobserver.enable:
@@ -296,7 +322,7 @@ def disableMonitorCardFun(envi,args):
     else:
         Executer.printOnShell("The cards are not monitored")
 
-def disableMonitorReaderFun(envi,args):
+def disableMonitorReaderFun():
     "disable the reader monitoring"
     
     if readerobserver.enable:
@@ -305,7 +331,7 @@ def disableMonitorReaderFun(envi,args):
     else:
         Executer.printOnShell("The readers are not monitored")
 
-def disableMonitorDataFun(envi,args):
+def disableMonitorDataFun():
     "disable the data monitoring"
     
     if not dataobserver.available():
@@ -319,14 +345,14 @@ def disableMonitorDataFun(envi,args):
     else:
         Executer.printOnShell("The data are not monitored")
 
-def disableMonitorCardAll(envi,args):
+def disableMonitorCardAll():
     "disable the global monitoring"
     
-    disableMonitorCardFun(envi,args)
-    disableMonitorReaderFun(envi,args)
-    disableMonitorDataFun(envi,args)
+    disableMonitorCardFun()
+    disableMonitorReaderFun()
+    disableMonitorDataFun()
 
-def listCardFun(envi,args):
+def listCardFun():
     "list all the card available on the system"
     
     return cardobserver.cardList
@@ -347,7 +373,7 @@ def cardListResultHandler(result):
     for c in result:
         Executer.printOnShell("card "+str(i)+" : "+toHexString(c.atr) + " connected on reader <" + str(c.reader)+">")
 
-def cardInfoFun(envi,cardIndex=None):
+def cardInfoFun(cardIndex=None):
     "print all the info of the card ATR"
     
     if cardIndex == None:
@@ -368,7 +394,14 @@ def cardInfoFun(envi,cardIndex=None):
         Executer.printOnShell("invalid indice")
         return
     
-    atr = ATR(card.atr)
+    return card.atr
+    
+def printATR(bytes):
+    if bytes == None or type(bytes) != list or len(bytes) < 1:
+        Executer.printOnShell("ATR is not defined")
+        return
+    
+    atr = ATR(bytes)
     
     print atr
     print
@@ -379,7 +412,7 @@ def connectReaderFromCardFun(envi,cardIndex=None):
     "establish a link between the shell and a card"
     
     if "connection" in envi and envi["connection"] != None:
-        print "there is already a connection to reader"
+        print "there is already a connection to reader "+envi["connectedReader"]
         return
     
     if cardIndex == None:
@@ -397,10 +430,21 @@ def connectReaderFromCardFun(envi,cardIndex=None):
         card = cardobserver.cardList[indice]
     except IndexError:
         Executer.printOnShell("invalid indice")
-        return
+        return False
+    
+    try:
+        envi["connection"] = card.createConnection() #create a connection on the reader
+    except Exception as e:
+        Executer.printOnShell(str(e))
+        return False
         
-    envi["connection"] = card.createConnection() #create a connection on the reader
-    envi["connection"].connect()#create a connection on the card
+    try:
+        envi["connection"].connect()#create a connection on the card
+    except Exception as e:
+        del envi["connection"]
+        Executer.printOnShell(str(e))
+        return False
+    
     card.connection = envi["connection"]
     card.connection.card = card
     envi["connectedReader"] = card.connection.getReader()
@@ -411,7 +455,9 @@ def connectReaderFromCardFun(envi,cardIndex=None):
                  ErrorCheckingChain( errorchain, ISO7816_4ErrorChecker() ) ]
     envi["connection"].setErrorCheckingChain(errorchain)
     
-def disconnectReaderFromCardFun(envi,args):
+    return True
+    
+def disconnectReaderFromCardFun(envi):
     "destroy the link between the current card/reader and the shell"
     
     if dataobserver.enable:
@@ -419,18 +465,24 @@ def disconnectReaderFromCardFun(envi,args):
     
     if "connection" not in envi or envi["connection"] == None:
         print "there is no opened connexion"
+        
+        if "connection" in envi:
+            del envi["connection"]
+        
         return
     
     try:
         envi["connection"].disconnect()
     except Exception as e:
-        print str(e)
+        Executer.printOnShell(str(e))
     
     if hasattr(envi["connection"],'card'):
         del envi["connection"].card.connection
         del envi["connection"].card
+    
+    if "connectedReader" in envi:
+        del envi["connectedReader"]
         
-    del envi["connectedReader"]
     del envi["connection"]
     
 def connectReaderFun(envi,readerIndex = None):
@@ -438,7 +490,7 @@ def connectReaderFun(envi,readerIndex = None):
     
     if "connection" in envi and envi["connection"] != None:
         print "there is already a connection to reader"
-        return
+        return False
     
     r = readers()
     if readerIndex == None:
@@ -450,59 +502,93 @@ def connectReaderFun(envi,readerIndex = None):
     
     if len(r) == 0:
         Executer.printOnShell("there is no reader available")
-        return  
+        return False
      
     try:
         reader = r[indice]
     except IndexError:
         Executer.printOnShell("invalid indice")
-        return
+        return False
         
-    envi["connection"] = reader.createConnection()
+    try:
+        envi["connection"] = reader.createConnection() #create a connection on the reader
+    except Exception as e:
+        Executer.printOnShell(str(e))
+        return False
+        
+    try:
+        envi["connection"].connect()#create a connection on the card
+    except Exception as e:
+        del envi["connection"]
+        Executer.printOnShell(str(e))
+        return False
+    
+    card = None
+    for c in cardobserver.cardList:
+        if c.atr == envi["connection"].getATR() and c.reader == reader:
+            card = c
+            card.connection = envi["connection"]
+            card.connection.card = card
+
+    if card == None:
+        Executer.printOnShell("WARNING : the connected card is not in the card list")
+    
     envi["connectedReader"] = reader
+    
+    return True
 
-def sendAPDU(envi,args):
+def sendAPDU(args):
     "send an apdu to the reader"
-    return resultHandlerAPDUreturnDATAandSW(ApduRaw(args))
+    return executeAPDU(ApduRaw(args))
 
-def forge(envi,args):
+def forge(args):
     "forge an apdu without send it to the reader"
     return ApduRaw(args)
+    
+def enableAutoCon():
+    cardobserver.enableAutoCon()
+    
+def disableAutoCon():
+    cardobserver.disableAutoCon()
 
 ###############################################################################################
 ##### add command to shell ####################################################################
 ###############################################################################################
+#(CommandStrings,preProcess=None,process=None,argChecker=None,postProcess=None,showInHelp=True):
 
 #key management        
-Executer.addCommand(["lskey"],                     True,listKeyFun,                  None,stringListResultHandler)
+Executer.addCommand(CommandStrings=["lskey"],                     preProcess=listKeyFun,postProcess=stringListResultHandler)
 s = stringArgChecker()
 i = IntegerArgChecker()
-keyCmdChecker = MultiArgsChecker([("name",s),("b1",i),("b2",i),("b3",i),("b4",i),("b5",i),("b6",i)],[("name",s),("b1",i),("b2",i),("b3",i),("b4",i),("b5",i),("b6",i),("b7",i),("b8",i)],[("name",s),("b1",i),("b2",i),("b3",i),("b4",i),("b5",i),("b6",i),("b7",i),("b8",i),("b9",i),("b10",i),("b11",i),("b12",i),("b13",i),("b14",i),("b15",i),("b16",i)]) #manage 6bytes, 8bytes or 16bytes key
 
-Executer.addCommand(["setkey"],                    True,addKeyFun,                   keyCmdChecker)
+Executer.addCommand(CommandStrings=["setkey"],                    process=addKeyFun,argChecker=InfiniteArgsChecker("key",hexaArgChecker(),[("name",s)],multiLimitChecker(6,8,16)) )
 
 #reader management
-Executer.addCommand(["lsreader"],                  True,listReaderFun,               None,stringListResultHandler)
-Executer.addCommand(["connect","reader"],          True,connectReaderFun,            MultiArgsChecker([],[("readerIndex",i)]))
-Executer.addCommand(["disconnect"],                True,disconnectReaderFromCardFun)
+Executer.addCommand(CommandStrings=["lsreader"],                  preProcess=listReaderFun,postProcess=stringListResultHandler)
+Executer.addCommand(CommandStrings=["connect","reader"],          process=connectReaderFun,argChecker=DefaultArgsChecker([("readerIndex",i)],0))
+Executer.addCommand(CommandStrings=["disconnect"],                process=disconnectReaderFromCardFun)
 
 #monitoring management
-Executer.addCommand(["monitor","all"],             True,monitorCardAll)
-Executer.addCommand(["monitor","reader"],          True,monitorReaderFun)
-Executer.addCommand(["monitor","card"],            True,monitorCardFun)
-Executer.addCommand(["monitor","data"],            True,monitorDataFun)
+Executer.addCommand(CommandStrings=["monitor","all"],             process=monitorCardAll)
+Executer.addCommand(CommandStrings=["monitor","reader"],          process=monitorReaderFun)
+Executer.addCommand(CommandStrings=["monitor","card"],            process=monitorCardFun)
+Executer.addCommand(CommandStrings=["monitor","data"],            process=monitorDataFun)
 
-Executer.addCommand(["disable","monitor","all"],   True,disableMonitorCardAll)
-Executer.addCommand(["disable","monitor","reader"],True,disableMonitorReaderFun)
-Executer.addCommand(["disable","monitor","card"],  True,disableMonitorCardFun)
-Executer.addCommand(["disable","monitor","data"],  True,disableMonitorDataFun)
+Executer.addCommand(CommandStrings=["disable","monitor","all"],   process=disableMonitorCardAll)
+Executer.addCommand(CommandStrings=["disable","monitor","reader"],process=disableMonitorReaderFun)
+Executer.addCommand(CommandStrings=["disable","monitor","card"],  process=disableMonitorCardFun)
+Executer.addCommand(CommandStrings=["disable","monitor","data"],  process=disableMonitorDataFun)
 
 #card management
-Executer.addCommand(["lscard"],                    True,listCardFun,                None,cardListResultHandler)
-Executer.addCommand(["cardinfo"],                  True,cardInfoFun,                MultiArgsChecker([],[("cardIndex",i)]))
-Executer.addCommand(["connect","card"],            True,connectReaderFromCardFun,   MultiArgsChecker([],[("cardIndex",i)]))
+Executer.addCommand(CommandStrings=["lscard"],                    preProcess=listCardFun,postProcess=cardListResultHandler)
+
+Executer.addCommand(CommandStrings=["atr"],                       preProcess=cardInfoFun,postProcess=printATR,argChecker=DefaultArgsChecker([("cardIndex",i)],0))
+Executer.addCommand(CommandStrings=["connect","card"],            process=connectReaderFromCardFun,   argChecker=DefaultArgsChecker([("cardIndex",i)],0))
 
 #apdu
-Executer.addCommand(["apdu"],                      True,sendAPDU,AllTheSameChecker(hexaArgChecker(),"args"),printResultHandler)
-Executer.addCommand(["forge"],                     True,forge,AllTheSameChecker(hexaArgChecker(),"args"),printResultHandler)
+Executer.addCommand(CommandStrings=["apdu"],                      process=sendAPDU,argChecker=AllTheSameChecker(hexaArgChecker(),"args"),postProcess=printResultHandler)
+Executer.addCommand(CommandStrings=["forge"],                     preProcess=forge,argChecker=AllTheSameChecker(hexaArgChecker(),"args"),postProcess=printResultHandler)
 #TODO make an alias with "execute"
+
+Executer.addCommand(CommandStrings=["auto","connection"],           process=enableAutoCon)
+Executer.addCommand(CommandStrings=["disable","auto","connection"], process=disableAutoCon)

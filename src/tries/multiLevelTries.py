@@ -49,7 +49,7 @@ class multiLevelTries():
                     for k in range(0,i):
                         existingPath += commandStrings[k]
                         
-                    raise triesException("can't insert a command here, another command already exists <"+existingPath+">")
+                    raise triesException("can't insert a command here, another command already exists <"+existingPath+">"+" vs <"+str(commandStrings)+">")
             break
         
         #insert the new command string

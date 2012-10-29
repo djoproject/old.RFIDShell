@@ -1,15 +1,5 @@
-faire une methode spéciale
-	-echo
-	-execute
-	
 manage error code
 	pouvoir ajouter son propre handler d'erreur
-	
-gérer le pipe
-	cmd1 | cm2 | cm3
-	et même pouvoir faire des trucs genre "cmd1 | execute | cm2 | execute"
-	
-gestion de l'aide sur base des argChcker
 
 faire une liste d'alias
 
@@ -18,3 +8,7 @@ l'autocomplétion
 gérer des trucs comme >, >>, ...
 
 faire un système de décapsulation des réponses
+
+dans les argChecker, quand il y a une erreur, afficher systèmatiquement la valeur foireuse
+
+/System/Library/Frameworks/PCSC.framework/Versions/A/Headers/winscard.h

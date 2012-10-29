@@ -4,9 +4,11 @@ from apdu.apduExecuter import *
 
 from keyList import keys
 from apdu.apdu import ApduDefault
-from apdu.exception import apduBuilderException
+from apdu.exception import apduBuilderException,apduAnswserException
 from smartcard.sw.SWExceptions import CheckingErrorException
 from addons.iso7816_4 import iso7816_4APDUBuilder
+from rfid.util import getPIXSS, getPIXNN
+from rfidDefault import printATR
 
 proxnrollSW = {
     0x68:(CheckingErrorException, 
@@ -22,6 +24,9 @@ proxnrollSW = {
         {0x00: "Card mute (or removed)",
          0xE7: "SAM didn't answer with 9000 (maybe this is not a Calypso SAM !)",
          None: "Error code returned by the Gemcore"})
+    
+    #TODO there is a lot of other error code in the doc
+    
 }
 #TODO load somewhere
 
@@ -117,6 +122,9 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
     timeout2s = 0x0C
     timeout4s = 0x0D
     
+    
+    #TODO BUG : avec un mauvais protocole, le reader renvoit 0x6f 0x47, code non defini...
+    #           et ca renvoit 0x6f 0x01 quand ca reussi avec les ultralight...
     @staticmethod
     def encapsulate(datas,protocolType=0x00,timeoutType=0x00,defaultSW = True):
         
@@ -150,6 +158,13 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
     @staticmethod
     def getDataCardType():
         return iso7816_4APDUBuilder.getDataCA(0xF1,0x00)
+
+    @staticmethod
+    def parseDataCardType(toParse):
+        if len(toParse) != 3:
+            raise apduAnswserException("(proxnroll) parseDataCardType, 3 bytes waited, got "+str(len(toParse)))
+        
+        print "Procole : "+getPIXSS(toParse[0]) + ", Type : " +getPIXNN((toParse[1] << 8) + toParse[2])  
 
     @staticmethod
     def getDataCardShortSerialNumber():
@@ -190,9 +205,15 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
     ###          
     
     @staticmethod
-    def loadKey(KeyIndex,Key,InVolatile = True,isTypeA = True):
-        if len(Key) != 6:
-            raise apduBuilderException("invalid key size, must be 6, got "+str(len(Key)))
+    def loadKey(KeyIndex,KeyName,InVolatile = True ,isTypeA = True):
+        if KeyName not in keys:
+            raise apduBuilderException("the key name doesn't exist "+str(KeyName))
+            
+        if len(keys[KeyName]) != 6:
+            raise apduBuilderException("invalid key length, must be 6, got "+str(len(keys[KeyName])))
+            
+        #if len(KeyName) != 6:
+        #    raise apduBuilderException("invalid key size, must be 6, got "+str(len(KeyName)))
         
         if InVolatile:
             if KeyIndex < 0 or KeyIndex > 3:
@@ -201,7 +222,7 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
             if not isTypeA:
                 KeyIndex &= 0x10
             
-            return ApduDefault(cla=0xFF,ins=0x82,p1=0x00,p2=KeyIndex,data=Key)
+            return ApduDefault(cla=0xFF,ins=0x82,p1=0x00,p2=KeyIndex,data=keys[KeyName])
         else:
             if KeyIndex < 0 or KeyIndex > 15:
                 raise apduBuilderException("invalid argument KeyIndex, a value between 0 and 15 was expected, got "+str(KeyIndex))
@@ -209,10 +230,10 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
             if not isTypeA:
                 KeyIndex &= 0x10
         
-            return ApduDefault(cla=0xFF,ins=0x82,p1=0x00,p2=KeyIndex,data=Key)
+            return ApduDefault(cla=0xFF,ins=0x82,p1=0x00,p2=KeyIndex,data=keys[KeyName])
         
     @staticmethod
-    def generalAuthenticate(blockNumber,KeyIndex,InVolatile = True,isTypeA = True):
+    def generalAuthenticate(blockNumber,KeyIndex,InVolatile = True ,isTypeA = True):
         if blockNumber < 0 or blockNumber > 255:
             raise apduBuilderException("invalid argument blockNumber, a value between 0 and 255 was expected, got "+str(blockNumber))
         
@@ -243,20 +264,26 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
         return ApduDefault(cla=0xFF,ins=0xB0,p1=msb,p2=lsb)
         
     @staticmethod
-    def mifareClassicRead(blockNumber,Key = None):
+    def mifareClassicRead(blockNumber,KeyName = None):
         if blockNumber < 0 or blockNumber > 255:
             raise apduBuilderException("invalid argument blockNumber, a value between 0 and 255 was expected, got "+str(blockNumber))
         
-        if Key == None:
+        if KeyName == None:
             return ApduDefault(cla=0xFF,ins=0xF3,p1=0x00,p2=blockNumber)
         else:
-            if len(Key) != 6:
-                raise apduBuilderException("invalid key size, must be 6, got "+str(len(Key)))
+            if KeyName not in keys:
+                raise apduBuilderException("the key name doesn't exist "+str(KeyName))
+
+            if len(keys[KeyName]) != 6:
+                raise apduBuilderException("invalid key length, must be 6, got "+str(len(keys[KeyName])))
+            
+            #if len(KeyName) != 6:
+            #    raise apduBuilderException("invalid key size, must be 6, got "+str(len(KeyName)))
                 
-            return ApduDefault(cla=0xFF,ins=0xF3,p1=0x00,p2=blockNumber,data=Key)
+            return ApduDefault(cla=0xFF,ins=0xF3,p1=0x00,p2=blockNumber,data=keys[KeyName])
         
     @staticmethod
-    def updateBinary(address=0,datas):
+    def updateBinary(datas,address=0):
         if address < 0 or address > 65535:
             raise apduBuilderException("invalid argument address, a value between 0 and 65535 was expected, got "+str(address))
         
@@ -269,7 +296,7 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
         return ApduDefault(cla=0xFF,ins=0xD6,p1=msb,p2=lsb,data=datas)
         
     @staticmethod
-    def mifareClassifWrite(blockNumber,datas,Key = None):
+    def mifareClassifWrite(blockNumber,datas,KeyName = None):
         if blockNumber < 0 or blockNumber > 255:
             raise apduBuilderException("invalid argument blockNumber, a value between 0 and 255 was expected, got "+str(blockNumber))
 
@@ -279,16 +306,22 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
         if (len(datas) % 16) != 0:
             raise apduBuilderException("invalid datas size, must be a multiple of 16")
 
-        if Key == None:
-            return ApduDefault(cla=0xFF,ins=0xF4,p1=0x00,p2=lsb,data=datas)
+        if KeyName == None:
+            return ApduDefault(cla=0xFF,ins=0xF4,p1=0x00,p2=blockNumber,data=datas)
         else:
-            if len(Key) != 6:
-                raise apduBuilderException("invalid key size, must be 6, got "+str(len(Key)))
+            if KeyName not in keys:
+                raise apduBuilderException("the key name doesn't exist "+str(KeyName))
+
+            if len(keys[KeyName]) != 6:
+                raise apduBuilderException("invalid key length, must be 6, got "+str(len(keys[KeyName])))
+            
+            #if len(KeyName) != 6:
+            #    raise apduBuilderException("invalid key size, must be 6, got "+str(len(KeyName)))
         
             toSend = []
             toSend.extend(datas)
-            toSend.extend(Key)
-            return ApduDefault(cla=0xFF,ins=0xF4,p1=0x00,p2=lsb,data=toSend)
+            toSend.extend(keys[KeyName])
+            return ApduDefault(cla=0xFF,ins=0xF4,p1=0x00,p2=blockNumber,data=toSend)
         
     
     #### SLOT CONTROL ####
@@ -342,6 +375,7 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
     
     @staticmethod
     def slotControlStop():
+        "stop the slot"
         return ApduDefault(cla=0xFF,ins=0xFB,p1=0xDE,p2=0xAD)
     
     #### CALYPSO METHOD ###
@@ -361,97 +395,131 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
     @staticmethod
     def configureCalypsoSamDisableInternalDigestUpdate():
         return ApduDefault(cla=0xFF,ins=0xFC,p1=0x08,p2=0x01)
+        
+def readAllFun():
+    ls = []
+    for i in range(0,0xffff):
+        apdu = ProxnrollAPDUBuilder.readBinary(i)
+        apduAnswer = executeAPDU(apdu)
+        
+        if apduAnswer.sw1 != 0x90 and apduAnswer.sw2 != 0x00:
+            print "%x %x" % (apduAnswer.sw1, apduAnswer.sw2)
+            break
+        
+        ls.append(apduAnswer)
+    return ls
 
 ##############################################################################################################
 ##############################################################################################################
 ##############################################################################################################
-
+#(CommandStrings=,preProcess=None,process=None,argChecker=None,postProcess=None,showInHelp=True):
 
 try:
     Executer
 except NameError:
     print "  No variable Executer found, this is an addon, it can't be executed alone"
     exit()
-
-def testInstruction():
-    pass
             
 t = tokenValueArgChecker({"off":ProxnrollAPDUBuilder.colorOFF,"on":ProxnrollAPDUBuilder.colorON,"auto":ProxnrollAPDUBuilder.colorAUTO,"slow":ProxnrollAPDUBuilder.colorSLOW,"quick":ProxnrollAPDUBuilder.colorQUICK,"beat":ProxnrollAPDUBuilder.colorBEAT})
 i0to60000 = IntegerArgChecker(0,60000)
 
 
-Executer.addCommand(["proxnroll","setlight"],                               "proxnroll setlight",                     ""
-                ,True,ProxnrollAPDUBuilder.setLedColorFun,MultiArgsChecker([("red",t),("green",t)],[("red",t),("green",t),("yellow_blue",t)]),resultHandlerAPDU)
-Executer.addCommand(["proxnroll","setbuzzer"],                              "proxnroll setbuzzer",                    ""
-                ,True,ProxnrollAPDUBuilder.setBuzzerDuration,                                  MultiArgsChecker([],[("duration",i0to60000)]),resultHandlerAPDU)
-Executer.addCommand(["proxnroll","calypso","setspeed","9600"],              "proxnroll calypso set speed 9600"       ,""
-                ,True,ProxnrollAPDUBuilder.configureCalypsoSamSetSpeed9600,                    None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","calypso","setspeed","115200"],            "proxnroll calypso set speed 115200"     ,""
-                ,True,ProxnrollAPDUBuilder.configureCalypsoSamSetSpeed115200,              None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","calypso","enabledigestupdate"],           "proxnroll calypso enable digest update" ,""
-                ,True,ProxnrollAPDUBuilder.configureCalypsoSamEnableInternalDigestUpdate       ,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","calypso","disabledigestupdate"],          "proxnroll calypso disable digest update",""
-                ,True,ProxnrollAPDUBuilder.configureCalypsoSamDisableInternalDigestUpdate      ,None,resultHandlerAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","setlight"],                               preProcess=ProxnrollAPDUBuilder.setLedColorFun,process=executeAPDU,argChecker=DefaultArgsChecker([("red",t),("green",t),("yellow_blue",t)],2))
+Executer.addCommand(CommandStrings=["proxnroll","setbuzzer"],                              preProcess=ProxnrollAPDUBuilder.setBuzzerDuration,process=executeAPDU,                                  argChecker=DefaultArgsChecker([("duration",i0to60000)],0))
+Executer.addCommand(CommandStrings=["proxnroll","calypso","setspeed","9600"],              preProcess=ProxnrollAPDUBuilder.configureCalypsoSamSetSpeed9600,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","calypso","setspeed","115200"],            preProcess=ProxnrollAPDUBuilder.configureCalypsoSamSetSpeed115200,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","calypso","enabledigestupdate"],           preProcess=ProxnrollAPDUBuilder.configureCalypsoSamEnableInternalDigestUpdate,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","calypso","disabledigestupdate"],          preProcess=ProxnrollAPDUBuilder.configureCalypsoSamDisableInternalDigestUpdate,process=executeAPDU)
                 
-Executer.addCommand(["proxnroll","information","vendor"],                   "proxnroll vendor name",                  ""
-                ,True,ProxnrollAPDUBuilder.getDataVendorName                                   ,None,resultHandlerAPDUAndConvertDataToString)
-Executer.addCommand(["proxnroll","information","product","name"],           "proxnroll product name",                 ""
-                ,True,ProxnrollAPDUBuilder.getDataProductName                                  ,None,resultHandlerAPDUAndConvertDataToString)
-Executer.addCommand(["proxnroll","information","product","serialString"],   "proxnroll product serial",               ""
-                ,True,ProxnrollAPDUBuilder.getDataProductSerialNumber                          ,None,resultHandlerAPDUAndConvertDataToString)
-Executer.addCommand(["proxnroll","information","product","usbidentifiel"],  "proxnroll product usb identifier",       ""
-                ,True,ProxnrollAPDUBuilder.getDataProductUSBIdentifier                         ,None,resultHandlerAPDUAndConvertDataToString)
-Executer.addCommand(["proxnroll","information","product","version"],        "proxnroll product version",              ""
-                ,True,ProxnrollAPDUBuilder.getDataProductVersion                               ,None,resultHandlerAPDUAndConvertDataToString)
-Executer.addCommand(["proxnroll","information","card","serial"],            "proxnroll product version",              ""
-                ,True,ProxnrollAPDUBuilder.getDataCardSerialNumber                             ,None,resultHandlerAPDUAndPrintData)
-                
-Executer.addCommand(["proxnroll","information","card","ats"],               True,ProxnrollAPDUBuilder.getDataCardATS               , None,resultHandlerAPDUAndPrintData)
-Executer.addCommand(["proxnroll","information","card","completeIdentifier"],True,ProxnrollAPDUBuilder.getDataCardCompleteIdentifier, None,resultHandlerAPDUAndPrintData)
-Executer.addCommand(["proxnroll","information","card","type"],              True,ProxnrollAPDUBuilder.getDataCardType              , None,resultHandlerAPDUAndPrintData)
-Executer.addCommand(["proxnroll","information","card","shortSerial"],       True,ProxnrollAPDUBuilder.getDataCardShortSerialNumber , None,resultHandlerAPDUAndPrintData)
-Executer.addCommand(["proxnroll","information","card","atr"],               True,ProxnrollAPDUBuilder.getDataCardATR               , None,resultHandlerAPDUAndPrintData)
-Executer.addCommand(["proxnroll","information","product","serial"],         True,ProxnrollAPDUBuilder.getDataProductSerialNumber   , None,resultHandlerAPDUAndPrintData)
-Executer.addCommand(["proxnroll","information","harwareIdentifier"],        True,ProxnrollAPDUBuilder.getDataHarwareIdentifier     , None,resultHandlerAPDUAndPrintData)
+Executer.addCommand(CommandStrings=["proxnroll","vendor"],                   preProcess=ProxnrollAPDUBuilder.getDataVendorName,process=executeAPDU                                   ,postProcess=resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(CommandStrings=["proxnroll","product","name"],           preProcess=ProxnrollAPDUBuilder.getDataProductName,process=executeAPDU                                  ,postProcess=resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(CommandStrings=["proxnroll","product","serialString"],   preProcess=ProxnrollAPDUBuilder.getDataProductSerialNumber,process=executeAPDU                          ,postProcess=resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(CommandStrings=["proxnroll","product","usbidentifiel"],  preProcess=ProxnrollAPDUBuilder.getDataProductUSBIdentifier,process=executeAPDU                         ,postProcess=resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(CommandStrings=["proxnroll","product","version"],        preProcess=ProxnrollAPDUBuilder.getDataProductVersion,process=executeAPDU                               ,postProcess=resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(CommandStrings=["proxnroll","product","serial"],         preProcess=ProxnrollAPDUBuilder.getDataProductSerialNumber,process=executeAPDU   ,postProcess=resultHandlerAPDUAndPrintData)
 
-Executer.addCommand(["proxnroll","control","tracking","resume"],            True,ProxnrollAPDUBuilder.slotControlResumeCardTracking, None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","tracking","suspend"],           True,ProxnrollAPDUBuilder.slotControlSuspendCardTracking,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","rffield","stop"],               True,ProxnrollAPDUBuilder.slotControlStopRFField        ,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","rffield","start"],              True,ProxnrollAPDUBuilder.slotControlStartRFField       ,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","rffield","reset"],              True,ProxnrollAPDUBuilder.slotControlResetRFField       ,None,resultHandlerAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","card","serial"],            preProcess=ProxnrollAPDUBuilder.getDataCardSerialNumber,process=executeAPDU                             ,postProcess=resultHandlerAPDUAndPrintData)
+Executer.addCommand(CommandStrings=["proxnroll","card","ats"],               preProcess=ProxnrollAPDUBuilder.getDataCardATS,process=executeAPDU               ,postProcess=resultHandlerAPDUAndPrintData)
+Executer.addCommand(CommandStrings=["proxnroll","card","completeIdentifier"],preProcess=ProxnrollAPDUBuilder.getDataCardCompleteIdentifier,process=executeAPDU,postProcess=resultHandlerAPDUAndPrintData)
+Executer.addCommand(CommandStrings=["proxnroll","card","type"],              preProcess=ProxnrollAPDUBuilder.getDataCardType,process=executeAPDU              ,postProcess=ProxnrollAPDUBuilder.parseDataCardType)
+Executer.addCommand(CommandStrings=["proxnroll","card","shortSerial"],       preProcess=ProxnrollAPDUBuilder.getDataCardShortSerialNumber,process=executeAPDU ,postProcess=resultHandlerAPDUAndPrintData)
+Executer.addCommand(CommandStrings=["proxnroll","card","atr"],               preProcess=ProxnrollAPDUBuilder.getDataCardATR,process=executeAPDU               ,postProcess=printATR) #resultHandlerAPDUAndPrintData
+Executer.addCommand(CommandStrings=["proxnroll","hardwareIdentifier"],       preProcess=ProxnrollAPDUBuilder.getDataHarwareIdentifier,process=executeAPDU     ,postProcess=resultHandlerAPDUAndPrintData)
 
-Executer.addCommand(["proxnroll","control","t=cl","deactivation"],          True,ProxnrollAPDUBuilder.slotControlTCLDeactivation    ,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","t=cl","activation","a"],        True,ProxnrollAPDUBuilder.slotControlTCLActivationTypeA ,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","t=cl","activation","b"],        True,ProxnrollAPDUBuilder.slotControlTCLActivationTypeB ,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","t=cl","disable","next"],        True,ProxnrollAPDUBuilder.slotControlDisableNextTCL     ,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","t=cl","disable","every"],       True,ProxnrollAPDUBuilder.slotControlDisableEveryTCL    ,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","t=cl","enable"],                True,ProxnrollAPDUBuilder.slotControlEnableTCLAgain     ,None,resultHandlerAPDU)
-Executer.addCommand(["proxnroll","control","t=cl","reset"],                 True,ProxnrollAPDUBuilder.slotControlResetAfterNextDisconnectAndDisableNextTCL,None,resultHandlerAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","tracking","resume"],            preProcess=ProxnrollAPDUBuilder.slotControlResumeCardTracking,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","tracking","suspend"],           preProcess=ProxnrollAPDUBuilder.slotControlSuspendCardTracking,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","rffield","stop"],               preProcess=ProxnrollAPDUBuilder.slotControlStopRFField,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","rffield","start"],              preProcess=ProxnrollAPDUBuilder.slotControlStartRFField,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","rffield","reset"],              preProcess=ProxnrollAPDUBuilder.slotControlResetRFField,process=executeAPDU)
 
-Executer.addCommand(["proxnroll","control","stop"],                         True,ProxnrollAPDUBuilder.slotControlStop               ,None,resultHandlerAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","t=cl","deactivation"],          preProcess=ProxnrollAPDUBuilder.slotControlTCLDeactivation,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","t=cl","activation","a"],        preProcess=ProxnrollAPDUBuilder.slotControlTCLActivationTypeA,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","t=cl","activation","b"],        preProcess=ProxnrollAPDUBuilder.slotControlTCLActivationTypeB,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","t=cl","disable","next"],        preProcess=ProxnrollAPDUBuilder.slotControlDisableNextTCL,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","t=cl","disable","every"],       preProcess=ProxnrollAPDUBuilder.slotControlDisableEveryTCL,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","t=cl","enable"],                preProcess=ProxnrollAPDUBuilder.slotControlEnableTCLAgain,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","control","t=cl","reset"],                 preProcess=ProxnrollAPDUBuilder.slotControlResetAfterNextDisconnectAndDisableNextTCL,process=executeAPDU)
 
-#TODO
-Executer.addCommand(["proxnroll","test"],                                   ,True,testInstruction,None)
+Executer.addCommand(CommandStrings=["proxnroll","control","stop"],                         preProcess=ProxnrollAPDUBuilder.slotControlStop,process=executeAPDU)
+Executer.addCommand(CommandStrings=["proxnroll","test"],                                   preProcess=ProxnrollAPDUBuilder.test,process=executeAPDU
+                    ,argChecker=InfiniteArgsChecker("datas",hexaArgChecker(),[("expected_answer_size",IntegerArgChecker(0,255)),("delay_to_answer",IntegerArgChecker(0,63))])
+                    ,postProcess=resultHandlerAPDUAndPrintDataAndSW)
 
-#TODO def encapsulate(self,datas,protocolType=0x00,timeoutType=0x00,defaultSW = True):
+typeAB = tokenValueArgChecker({"a":True,"b":False})
+typeVolatile = tokenValueArgChecker({"volatile":True,"nonvolatile":False})
+Executer.addCommand(CommandStrings=["proxnroll","mifare","loadkey"],                       preProcess=ProxnrollAPDUBuilder.loadKey,process=executeAPDU,                 
+argChecker=DefaultArgsChecker([("KeyIndex",IntegerArgChecker(0,15)),("KeyName",stringArgChecker()),("isTypeA",typeAB),("InVolatile",typeVolatile)],2))
+Executer.addCommand(CommandStrings=["proxnroll","mifare","authenticate"],                  preProcess=ProxnrollAPDUBuilder.generalAuthenticate,process=executeAPDU,     
+argChecker=DefaultArgsChecker([("blockNumber",hexaArgChecker(0,0xFF)),("KeyIndex",IntegerArgChecker(0,15)),("isTypeA",typeAB),("InVolatile",typeVolatile)],2))
 
-#TODO def loadKey(self,KeyIndex,Key,InVolatile = True,isTypeA = True):
-
-    #TODO def generalAuthenticate(self,blockNumber,KeyIndex,InVolatile = True,isTypeA = True):
-
-    #TODO def readBinary(self, address = 0):
 i = IntegerArgChecker()
-Executer.addCommand(["proxnroll","read"],                                   "proxnroll read instruction",             "",True,ProxnrollAPDUBuilder.readBinary,                                          MultiArgsChecker([],[("address",i)]),resultHandlerAPDUAndPrintData)
+Executer.addCommand(CommandStrings=["proxnroll","read"],                                   preProcess=ProxnrollAPDUBuilder.readBinary,process=executeAPDU,                 argChecker=DefaultArgsChecker([("address",i)],0),postProcess=resultHandlerAPDUAndPrintData)
+Executer.addCommand(CommandStrings=["proxnroll","mifare","read"],                          preProcess=ProxnrollAPDUBuilder.mifareClassicRead,process=executeAPDU,          argChecker=DefaultArgsChecker([("blockNumber",hexaArgChecker()),("KeyName",stringArgChecker())],1),postProcess=resultHandlerAPDUAndPrintData)
+Executer.addCommand(CommandStrings=["proxnroll","update"],                                 preProcess=ProxnrollAPDUBuilder.updateBinary,process=executeAPDU,               argChecker=InfiniteArgsChecker("datas",hexaArgChecker(),[("address",hexaArgChecker(0,0xFFFF))],defaultLimitChecker(0xFF)))
 
-    #TODO def mifareClassicRead(self,blockNumber,Key = None):
+timeoutType = tokenValueArgChecker({"default":ProxnrollAPDUBuilder.timeoutDefault,
+                                    "1ms":ProxnrollAPDUBuilder.timeout1ms,
+                                    "2ms":ProxnrollAPDUBuilder.timeout2ms,
+                                    "4ms":ProxnrollAPDUBuilder.timeout4ms,
+                                    "8ms":ProxnrollAPDUBuilder.timeout8ms,
+                                    "16ms":ProxnrollAPDUBuilder.timeout16ms,
+                                    "32ms":ProxnrollAPDUBuilder.timeout32ms,
+                                    "65ms":ProxnrollAPDUBuilder.timeout65ms,
+                                    "125ms":ProxnrollAPDUBuilder.timeout125ms,
+                                    "250ms":ProxnrollAPDUBuilder.timeout250ms,
+                                    "500ms":ProxnrollAPDUBuilder.timeout500ms,
+                                    "1s":ProxnrollAPDUBuilder.timeout1s,
+                                    "2s":ProxnrollAPDUBuilder.timeout2s,
+                                    "4s":ProxnrollAPDUBuilder.timeout4s})
+                                    
+protocoleType = tokenValueArgChecker({"default":ProxnrollAPDUBuilder.protocolType_ISO14443_TCL,
+                                    "ISO14443A":ProxnrollAPDUBuilder.protocolType_ISO14443A,
+                                    "ISO14443B":ProxnrollAPDUBuilder.protocolType_ISO14443B,
+                                    "ISO15693":ProxnrollAPDUBuilder.protocolType_ISO15693,
+                                    "ISO15693UID":ProxnrollAPDUBuilder.protocolType_ISO15693_WithUID,
+                                    "ISO14443ANOCRC":ProxnrollAPDUBuilder.protocolType_ISO14443A_WithoutCRC,
+                                    "ISO14443BNOCRC":ProxnrollAPDUBuilder.protocolType_ISO14443B_WithoutCRC,
+                                    "ISO15693NOCRC":ProxnrollAPDUBuilder.protocolType_ISO15693_WithoutCRC})
+                                    
+redirectionType = tokenValueArgChecker({"main":ProxnrollAPDUBuilder.redirectionToMainSlot,
+                                        "1":ProxnrollAPDUBuilder.redirectionTo1stSlot,
+                                        "2":ProxnrollAPDUBuilder.redirectionTo2ndSlot,
+                                        "3":ProxnrollAPDUBuilder.redirectionTo3rdSlot,
+                                        "4":ProxnrollAPDUBuilder.redirectionTo4stSlot})
+                                        
+partialType = tokenValueArgChecker({"8":ProxnrollAPDUBuilder.lastByte_Complete_WithoutCRC,
+                                        "1":ProxnrollAPDUBuilder.lastByte_With1bits_WithoutCRC,
+                                        "2":ProxnrollAPDUBuilder.lastByte_With2bits_WithoutCRC,
+                                        "3":ProxnrollAPDUBuilder.lastByte_With3bits_WithoutCRC,
+                                        "4":ProxnrollAPDUBuilder.lastByte_With4bits_WithoutCRC,
+                                        "5":ProxnrollAPDUBuilder.lastByte_With5bits_WithoutCRC,
+                                        "6":ProxnrollAPDUBuilder.lastByte_With6bits_WithoutCRC,
+                                        "7":ProxnrollAPDUBuilder.lastByte_With7bits_WithoutCRC})
 
-    #TODO def updateBinary(self,datas):
-
-    #TODO def mifareClassifWrite(self,blockNumber,datas,Key = None):
-
-
-
-
-
+Executer.addCommand(CommandStrings=["proxnroll","encapsulate","standard"],                 preProcess=ProxnrollAPDUBuilder.encapsulate,process=executeAPDU               ,argChecker=InfiniteArgsChecker("datas",hexaArgChecker(),[("protocolType",protocoleType),("timeoutType",timeoutType)],defaultLimitChecker(0xFF)),postProcess=resultHandlerAPDUAndPrintDataAndSW)
+Executer.addCommand(CommandStrings=["proxnroll","encapsulate","redirection"],              preProcess=ProxnrollAPDUBuilder.encapsulate,process=executeAPDU               ,argChecker=InfiniteArgsChecker("datas",hexaArgChecker(),[("protocolType",redirectionType),("timeoutType",timeoutType)],defaultLimitChecker(0xFF)),postProcess=resultHandlerAPDUAndPrintDataAndSW)
+Executer.addCommand(CommandStrings=["proxnroll","encapsulate","partial"],                  preProcess=ProxnrollAPDUBuilder.encapsulate,process=executeAPDU               ,argChecker=InfiniteArgsChecker("datas",hexaArgChecker(),[("protocolType",partialType),("timeoutType",timeoutType)],defaultLimitChecker(0xFF)),postProcess=resultHandlerAPDUAndPrintDataAndSW)
+Executer.addCommand(CommandStrings=["proxnroll","mifare","update"],                        preProcess=ProxnrollAPDUBuilder.mifareClassifWrite,process=executeAPDU        ,argChecker=InfiniteArgsChecker("datas",hexaArgChecker(),[("blockNumber",hexaArgChecker()),("KeyName",stringArgChecker())],defaultLimitChecker(0xFF)))
+Executer.addCommand(CommandStrings=["proxnroll","readall"],                                process=readAllFun,                                     postProcess=printByteListList)
 
 

@@ -1,5 +1,8 @@
 *.pyc
-RfidShell.py
 *test*
 *Test*
 *.tmproj
+.DS_Store
+keyList.py
+*.script
+*desfire.py

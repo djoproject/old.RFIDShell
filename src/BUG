@@ -4,5 +4,37 @@ TODO
 	+- corrigé, mais c'est pas encore génial
 	
 -parfois un "not a list of bytes" qui apparait, étrange
+	ça provient de pyscard, hexstring?
 
 -quand on déconnecte un lecteur avec une carte connecté, il y a parfois une exception qui saute dans un des threads :/
+
+-on peut encore 16 ou 0x16, ce sera accepté par int(,16)
+
+rfid>con c
+   SEVERE : Unable to connect with protocol: T0 or T1. Card is unpowered. at connect card 
+Traceback (most recent call last):
+  File "/Volumes/Home/Desktop/RFID/RfidShell/src/arg/args.py", line 237, in executeCommand
+    processResult = commandToExecute.ProcessExecution(preResult) #last item
+  File "/Volumes/Home/Desktop/RFID/RfidShell/src/arg/args.py", line 119, in ProcessExecution
+    return self.process(**nextArgs)
+  File "/Volumes/Home/Desktop/RFID/RfidShell/src/addons/rfidDefault.py", line 406, in connectReaderFromCardFun
+    envi["connection"].connect()#create a connection on the card
+  File "/Library/Python/2.6/site-packages/smartcard/CardConnectionDecorator.py", line 54, in connect
+    self.component.connect(protocol, mode, disposition)
+  File "/Library/Python/2.6/site-packages/smartcard/pcsc/PCSCCardConnection.py", line 118, in connect
+    raise CardConnectionException('Unable to connect with protocol: ' + dictProtocol[pcscprotocol] + '. ' + SCardGetErrorMessage(hresult))
+CardConnectionException: Unable to connect with protocol: T0 or T1. Card is unpowered.
+rfid>con c
+there is already a connection to reader
+rfid>disc
+   SEVERE : 'connectedReader' at disconnect 
+Traceback (most recent call last):
+  File "/Volumes/Home/Desktop/RFID/RfidShell/src/arg/args.py", line 237, in executeCommand
+    processResult = commandToExecute.ProcessExecution(preResult) #last item
+  File "/Volumes/Home/Desktop/RFID/RfidShell/src/arg/args.py", line 119, in ProcessExecution
+    return self.process(**nextArgs)
+  File "/Volumes/Home/Desktop/RFID/RfidShell/src/addons/rfidDefault.py", line 436, in disconnectReaderFromCardFun
+    del envi["connectedReader"]
+KeyError: 'connectedReader'
+rfid>con c
+there is already a connection to reader

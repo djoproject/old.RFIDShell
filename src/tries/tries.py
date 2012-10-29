@@ -202,7 +202,7 @@ class tries():
                 return Node
             
             #if the current node has a None value, it's an intermediate node with at most two children
-            raise triesException("the prefix "+str(prefix)+" corresponds to multiple node")
+            raise triesException("the prefix <"+str(prefix)+"> corresponds to multiple node")
         
         def partial(Node,prefix,count,totalCount):
             return exact(Node,prefix)
