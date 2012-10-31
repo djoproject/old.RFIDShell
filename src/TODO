@@ -8,6 +8,12 @@ l'autocomplétion
 gérer des trucs comme >, >>, ...
 
 faire un système de décapsulation des réponses
+	+- en place
+	
+faire un système de gestion des codes d'erreurs
+	à faire dans executeAPDU
+	
+permettre de transfèrer des informations entre les pre et les post
 
 dans les argChecker, quand il y a une erreur, afficher systèmatiquement la valeur foireuse
 

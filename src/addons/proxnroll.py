@@ -1,5 +1,7 @@
 #!/usr/bin/python2.6
 from arg.args import *
+from arg.argchecker import *
+
 from apdu.apduExecuter import *
 
 from keyList import keys

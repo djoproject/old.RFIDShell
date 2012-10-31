@@ -3,6 +3,7 @@ from arg.args import *
 import os, sys
 from tries.multiLevelTries import buildDictionnary
 from apdu.apduExecuter import Executer
+from arg.argchecker import *
 
 def noneFun():
     pass
@@ -138,6 +139,8 @@ if __name__ == "__main__":
     Executer.addCommand(CommandStrings=["echo16"]   ,process=echo16         ,argChecker=AllTheSameChecker(ArgChecker(),"args")             ,postProcess=printResultHandler)
     Executer.addCommand(CommandStrings=["toascii"]  ,process=intToAscii     ,argChecker=AllTheSameChecker(IntegerArgChecker(),"args")      ,postProcess=printResultHandler)
     
+    #TODO set get et list l'envi
+    
     #TODO make the unload addon and the reload
     
     loadAddonFun("rfidDefault")
@@ -146,6 +149,7 @@ if __name__ == "__main__":
     loadAddonFun("pn532")
     loadAddonFun("mifareUltralight")
     loadAddonFun("scl3711")
+    loadAddonFun("desfire")
     
     if len(sys.argv) > 1:
         if os.path.isfile(sys.argv[1]):

@@ -1,6 +1,8 @@
 #!/usr/bin/python2.6
 
 from arg.args import *
+from arg.argchecker import *
+
 from apdu.apduExecuter import *
 from apdu.apdu import Apdu
 from apdu.exception import apduBuilderException

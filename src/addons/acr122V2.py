@@ -1,5 +1,7 @@
 #!/usr/bin/python2.6
 from arg.args import *
+from arg.argchecker import *
+
 from apdu.apduExecuter import *
 from addons.iso7816_4 import iso7816_4APDUBuilder
 from apdu.apdu import ApduDefault,ApduRaw

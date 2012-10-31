@@ -1,5 +1,7 @@
 #!/usr/bin/python2.6
 from arg.args import *
+from arg.argchecker import *
+
 from apdu.apduExecuter import *
 
 from keyList import keys
@@ -209,6 +211,8 @@ class DataManager():
         return "connection" in Executer.envi
         
     def update( self, cardconnection, ccevent ):
+        #TODO parfois l'affichage colle les bytes :/
+        
         if "connect" == ccevent.type:
             Executer.printOnShell("connecting to " +str(cardconnection.getReader()))
 

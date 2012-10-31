@@ -1,4 +1,143 @@
 #!/usr/bin/python2.6
+import commands
+import random
+import binascii
+import os
+
+#TODO utilisation d'exception inexistante...
+
+def printHexaTableWithoutSpace(l):
+    return ''.join( [ "%02X" % x for x in l ] ).strip()
+
+def stringToHex(string ):
+    ret = []
+
+    for i in range(0, len(string)/2):
+        ret.extend([int( str(string[(i*2)]+string[(i*2)+1]) , 16  )])
+
+    return ret
+
+def xorList(list1, list2):
+    if len(list1) != len(list2):
+        raise ParamException("(myutil) xorList, the lists to xor have different size")
+
+    ret = []
+    for i in range(0,len(list1)):
+        ret.append(list1[i] ^ list2[i])
+
+    return ret
+
+def sslDesDecToReader(challenge,key):
+    if len(challenge) % 8 != 0:
+        raise CypherException("sslDesDecToReader, challenge size isn't a multiple of 8")
+
+    iv = [0,0,0,0,0,0,0,0]
+
+    if len(key) == 8:
+        cmd = " | xxd -p -r | openssl enc -des -d -K "+printHexaTableWithoutSpace(key)+" -iv 0 -nopad | xxd -p"
+    elif len(key) == 16:
+        cmd = " | xxd -p -r | openssl enc -des3 -d -K "+printHexaTableWithoutSpace(key)+printHexaTableWithoutSpace(key[:8])+" -iv 0 -nopad | xxd -p"
+    else:
+        raise CypherException("sslDesDecToReader, key size is different of 8 or 16")
+
+    count = 0
+    ret = []
+    while count < len(challenge):
+        rep = commands.getstatusoutput("echo "+printHexaTableWithoutSpace(xorList(challenge[count:(count+8)], iv))+cmd)
+
+        try:
+            iv = stringToHex(rep[1])
+        except ValueError:
+            raise CypherException("sslDesDecToReader, an error has occur in openssl call : "+str(rep))
+            
+        ret.extend(iv)
+        count += 8
+    
+    return ret
+
+def sslDesDecFromReader(challenge,key):
+    if len(challenge) % 8 != 0:
+        raise CypherException("sslDesDecFromReader, challenge size isn't a multiple of 8")
+
+    if len(key) == 8:
+        cmd = " | xxd -p -r | openssl enc -des -d -K "+printHexaTableWithoutSpace(key)+" -iv 0 -nopad | xxd -p"
+    elif len(key) == 16:
+        cmd = " | xxd -p -r | openssl enc -des3 -d -K "+printHexaTableWithoutSpace(key)+printHexaTableWithoutSpace(key[:8])+" -iv 0 -nopad | xxd -p"
+    else:
+        raise CypherException("sslDesDecFromReader, key size is different of 8 or 16")
+        
+    iv = [0,0,0,0,0,0,0,0]
+    ret = []
+    count = 0
+    
+    while (count < len(challenge)):
+        rep = commands.getstatusoutput("echo "+printHexaTableWithoutSpace(challenge[count:(count+8)])+cmd)
+
+        if rep[0] != 0:
+            raise CypherException("sslDesDecFromReader, an error has occur in openssl call : "+str(rep[1]))
+
+        try:
+            ret.extend(xorList(stringToHex(rep[1]), iv))
+        except ValueError:
+            raise CypherException("sslDesDecFromReader, an error has occur in openssl call : "+str(rep[1]))
+            
+        iv = challenge[count:(count+8)]
+        count += 8
+    
+    return ret
+    
+def getNounce(size = 8):
+    ret = []
+    if os.path.exists("/dev/random"):
+        #print "/dev/random used"
+        f = open("/dev/random","r")
+        for v in f.read(size):
+            ret.append(int(binascii.hexlify(v), 16))
+        f.close()
+    elif os.path.exists("/dev/urandom"):
+        print "warning, /dev/urandom used"
+        f = open("/dev/urandom","r")
+        for v in f.read(size):
+            ret.append(int(binascii.hexlify(v), 16))
+        f.close()
+    else:
+        print "warning, python random used"
+        for i in range(0,size):
+            ret.append(random.randint(0,255))
+            
+    return ret
+
+def generateD1D2(NT, nounce, key):    
+    #calcul ntprime
+    NTprime = []
+    NTprime.extend(NT)
+    NTprime.append(NTprime.pop(0))
+
+    #calcul d1
+    D1 = sslDesDecToReader(nounce,key)
+
+    #calcul d2
+    D1xorNTprime = []
+    for i in range(0,8):
+        D1xorNTprime.append(D1[i] ^ NTprime[i])
+
+    D2 = sslDesDecToReader(D1xorNTprime,key)
+
+    #challenge step 2
+    rep = D1
+    rep.extend(D2)
+
+    return rep
+    
+def computeCRC(listByte):
+    wCrc = 0x6363
+    for i in range(0, len(listByte)):
+        bt = listByte[i]
+        bt = (bt ^ (wCrc & 0xff)) & 0xff
+        bt = (bt ^ (bt << 4)) & 0xff
+        wCrc = ((wCrc >> 8) ^ (bt << 8) ^ (bt << 3) ^ (bt >> 4)) & 0xffff
+
+    return wCrc & 0x00ff, (wCrc >> 8) & 0x00ff
 
 def getPIXSS(value):
     if (value == 0x00): return "No Information given"
