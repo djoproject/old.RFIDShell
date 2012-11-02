@@ -3,13 +3,24 @@ import inspect
 from exception import argPostExecutionException
 
 class Command(object):
-    def __init__(self,envi,printer,preProcess=None,process=None,argChecker=None,postProcess=None):
-        self.preProcess = preProcess
-        self.process = process
-        self.postProcess = postProcess
+    #def __init__(self,envi,printer,preProcess=None,process=None,argChecker=None,postProcess=None):
+    def __init__(self,envi,printer,argChecker=None):
+
+        #self.preProcess = preProcess
+        #self.process = process
+        #self.postProcess = postProcess
         self.argChecker = argChecker
         self.envi = envi
         self.printer = printer
+
+    def preProcess(self):
+        pass
+        
+    def postProcess(self):
+        pass
+
+    def process(self):
+        pass
 
     #
     # this method check the args with respect to meth
