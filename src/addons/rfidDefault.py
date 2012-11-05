@@ -10,10 +10,10 @@ try:
     from keyList import keys
 except ImportError:
     import os
-    if not os.path.exists("../keyList.py"):
+    if not os.path.exists("keyList.py"):
         print "Key Store Creation..."
         try:
-            f = open("../keyList.py"+os.linesep, 'w')
+            f = open("keyList.py", 'w')
             f.write("#"+os.linesep)
             f.write("#"+os.linesep)
             f.write("# OFFLINE key set"+os.linesep)
