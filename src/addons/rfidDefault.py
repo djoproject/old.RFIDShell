@@ -21,9 +21,12 @@ except ImportError:
             f.write("keys = {}"+os.linesep)
             f.write(os.linesep)
             f.close()
+            
         except IOError as ioe:
             print "failed to create the key store : "+str(ioe)
             exit()
+        
+        keys = {}
 
 import platform
 
