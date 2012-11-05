@@ -1,8 +1,8 @@
 #!/usr/bin/python2.6
 from arg.args import *
+from arg.resultHandler import *
 import os, sys
 from tries.multiLevelTries import buildDictionnary
-from apdu.apduExecuter import Executer
 from arg.argchecker import *
 
 def noneFun():
@@ -15,9 +15,7 @@ def exitFun():
 def helperFun(envi,args):
     "print the help"
     #TODO
-    #   add a usage message, print it when command is wrong
-    #   build the usage with the arg list checker
-    #
+    #   print the complete command
     
     StartNode = None
     if len(args) > 0:
@@ -58,6 +56,10 @@ def listAddonFun():
                     l.append(name[0:-3])
 
     return l
+    
+def listEnvFun(envi):
+    "list all the environment variable"
+    return [str(k)+" : "+str(v) for k,v in envi.iteritems()]
 
 def loadAddonFun(name):
     "load an external shell addon"
@@ -66,7 +68,8 @@ def loadAddonFun(name):
     try:
         __import__(toLoad)
         print "   "+toLoad+" loaded !"
-    except ImportError:
+    except ImportError as ie:
+        print ie
         print "unknwon module "+str(name)
     
 def echo(args):
@@ -133,13 +136,17 @@ if __name__ == "__main__":
     Executer.addCommand(CommandStrings=["help"]     ,process=helperFun      ,argChecker=AllTheSameChecker(ArgChecker(),"args"))
     Executer.addCommand(CommandStrings=["usage"]    ,process=usageFun       ,argChecker=AllTheSameChecker(ArgChecker(),"args"))
     
-    Executer.addCommand(CommandStrings=["lsaddons"] ,preProcess=listAddonFun,postProcess=stringListResultHandler)
+    Executer.addCommand(CommandStrings=["list","addon"] ,preProcess=listAddonFun,postProcess=stringListResultHandler)
     Executer.addCommand(CommandStrings=["loadaddon"],process=loadAddonFun   ,argChecker=DefaultArgsChecker([("name",stringArgChecker())]))
     Executer.addCommand(CommandStrings=["echo"]     ,process=echo           ,argChecker=AllTheSameChecker(ArgChecker(),"args")             ,postProcess=printResultHandler)        
     Executer.addCommand(CommandStrings=["echo16"]   ,process=echo16         ,argChecker=AllTheSameChecker(ArgChecker(),"args")             ,postProcess=printResultHandler)
     Executer.addCommand(CommandStrings=["toascii"]  ,process=intToAscii     ,argChecker=AllTheSameChecker(IntegerArgChecker(),"args")      ,postProcess=printResultHandler)
     
-    #TODO set get et list l'envi
+    #debug
+    Executer.addCommand(CommandStrings=["empty"],argChecker=AllTheSameChecker(ArgChecker(),"args"))
+    
+    #TODO set get l'envi
+    Executer.addCommand(CommandStrings=["list","environment"] ,preProcess=listEnvFun,postProcess=stringListResultHandler)
     
     #TODO make the unload addon and the reload
     

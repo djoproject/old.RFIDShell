@@ -1,6 +1,7 @@
 #!/usr/bin/python2.6
 from arg.args import *
 from arg.argchecker import *
+from arg.resultHandler import *
 
 from apdu.apduExecuter import *
 
@@ -11,6 +12,7 @@ from smartcard.System import readers
 from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
 from smartcard.ReaderMonitoring import ReaderMonitor, ReaderObserver
 from smartcard.CardMonitoring import CardMonitor, CardObserver
+from smartcard.CardConnection import CardConnection
 from apdu.apdu import toHexString
 from smartcard.ATR import ATR
 
@@ -251,7 +253,7 @@ def addKeyFun(name,key):
     #for i in args:
     #    key.append(args[i])
 
-    print key
+    #print key
 
     keys[name] = key
 
@@ -541,9 +543,9 @@ def connectReaderFun(envi,readerIndex = None):
     
     return True
 
-def sendAPDU(args):
+def sendAPDU(envi,args):
     "send an apdu to the reader"
-    return executeAPDU(ApduRaw(args))
+    return executeAPDU(envi,ApduRaw(args))
 
 def forge(args):
     "forge an apdu without send it to the reader"
@@ -554,6 +556,35 @@ def enableAutoCon():
     
 def disableAutoCon():
     cardobserver.disableAutoCon()
+    
+def setProtocol(envi,protocols):
+    if "connection" not in envi or envi["connection"] == None:
+        raise argExecutionException("no connection available")
+    
+    protocol = 0
+    
+    for p in protocols:
+        protocol |= p
+    
+    envi["connection"].setProtocol(protocol)
+    
+def getProtocol(envi,printer):
+    if "connection" not in envi or envi["connection"] == None:
+        raise argExecutionException("no connection available")
+        
+    p = envi["connection"].getProtocol()
+    
+    if (p&CardConnection.T0_protocol):
+        printer.printOnShell("T0 enable")
+        
+    if (p&CardConnection.T1_protocol):
+        printer.printOnShell("T1 enable")
+
+    if (p&CardConnection.T15_protocol):
+        printer.printOnShell("T15 enable")
+        
+    if (p&CardConnection.RAW_protocol):
+        printer.printOnShell("RAW enable")
 
 ###############################################################################################
 ##### add command to shell ####################################################################
@@ -565,10 +596,10 @@ Executer.addCommand(CommandStrings=["lskey"],                     preProcess=lis
 s = stringArgChecker()
 i = IntegerArgChecker()
 
-Executer.addCommand(CommandStrings=["setkey"],                    process=addKeyFun,argChecker=InfiniteArgsChecker("key",hexaArgChecker(),[("name",s)],multiLimitChecker(6,8,16)) )
+Executer.addCommand(CommandStrings=["set","key"],                    process=addKeyFun,argChecker=InfiniteArgsChecker("key",hexaArgChecker(),[("name",s)],multiLimitChecker(6,8,16)) )
 
 #reader management
-Executer.addCommand(CommandStrings=["lsreader"],                  preProcess=listReaderFun,postProcess=stringListResultHandler)
+Executer.addCommand(CommandStrings=["list","reader"],             preProcess=listReaderFun,postProcess=stringListResultHandler)
 Executer.addCommand(CommandStrings=["connect","reader"],          process=connectReaderFun,argChecker=DefaultArgsChecker([("readerIndex",i)],0))
 Executer.addCommand(CommandStrings=["disconnect"],                process=disconnectReaderFromCardFun)
 
@@ -584,7 +615,7 @@ Executer.addCommand(CommandStrings=["disable","monitor","card"],  process=disabl
 Executer.addCommand(CommandStrings=["disable","monitor","data"],  process=disableMonitorDataFun)
 
 #card management
-Executer.addCommand(CommandStrings=["lscard"],                    preProcess=listCardFun,postProcess=cardListResultHandler)
+Executer.addCommand(CommandStrings=["list","card"],               preProcess=listCardFun,postProcess=cardListResultHandler)
 
 Executer.addCommand(CommandStrings=["atr"],                       preProcess=cardInfoFun,postProcess=printATR,argChecker=DefaultArgsChecker([("cardIndex",i)],0))
 Executer.addCommand(CommandStrings=["connect","card"],            process=connectReaderFromCardFun,   argChecker=DefaultArgsChecker([("cardIndex",i)],0))
@@ -596,3 +627,9 @@ Executer.addCommand(CommandStrings=["forge"],                     preProcess=for
 
 Executer.addCommand(CommandStrings=["auto","connection"],           process=enableAutoCon)
 Executer.addCommand(CommandStrings=["disable","auto","connection"], process=disableAutoCon)
+
+protType = tokenValueArgChecker({"T0":CardConnection.T0_protocol,"T1":CardConnection.T1_protocol,"RAW":CardConnection.RAW_protocol,"T15":CardConnection.T15_protocol})
+Executer.addCommand(CommandStrings=["set","protocol"],           process=setProtocol, argChecker=AllTheSameChecker(protType,"protocols",None,None,True))
+Executer.addCommand(CommandStrings=["get","protocol"],           process=getProtocol)
+
+

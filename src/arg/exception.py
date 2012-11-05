@@ -16,8 +16,9 @@
 #along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class argException(Exception):
-    def __init__(self,value):
+    def __init__(self,value,usage=""):
         self.value = value
+        self.usage = usage
 
     def __str__(self):
         return str(self.value)

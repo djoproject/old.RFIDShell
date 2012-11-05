@@ -1,21 +1,21 @@
 
 
-"""def stringListResultHandler(result):
+def stringListResultHandler(printer,result):
     #if result == None or len(result) == 0:
     #    Executer.printOnShell("no item available")
     #    return
         
     for i in result:
-        Executer.printOnShell(i)
+        printer.printOnShell(i)
         
-def printResultHandler(result):
+def printResultHandler(printer,result):
     if result != None:
-        print str(result)
+        printer.printOnShell(str(result))
     
-def listResultHandler(result):
+def listResultHandler(printer,result):
     #if result == None or len(result) == 0:
     #    Executer.printOnShell("no item available")
     #    return
 
     for i in result:
-        Executer.printOnShell(str(i))"""
+        printer.printOnShell(str(i))

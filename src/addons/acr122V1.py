@@ -2,6 +2,7 @@
 from apdu.apduExecuter import *
 from arg.args import *
 from arg.argchecker import *
+from arg.resultHandler import *
 
 from addons.iso7816_4 import iso7816_4APDUBuilder
 from apdu.apdu import ApduDefault
@@ -91,20 +92,20 @@ class acr122SamAPDUBuilder(iso7816_4APDUBuilder):
         "acr122 firmware version"
         return ApduDefault(cla=0xFF,ins=0x00,p1=0x48,p2=0x01)
         
-def acr122execute(args):
+def acr122execute(envi,args):
     apdu = acr122SamAPDUBuilder.directTransmit(args)
     
     apduAnswer = executeAPDU(apdu)
     
     if apduAnswer.sw1 == 0x61:
         apdu = acr122SamAPDUBuilder.getResponse(apduAnswer.sw2)
-        return executeAPDU(apdu)
+        return executeAPDU(envi,apdu)
     else:
         pass #TODO
     
 i = IntegerArgChecker(1,255)
 
-Executer.addCommand(CommandStrings=["acr122","firmware"],   preProcess=acr122SamAPDUBuilder.getFirmwareVersion ,process=executeAPDU,                                                            postProcess=resultHandlerAPDUAndConvertDataToString)
+Executer.addCommand(CommandStrings=["acr122","firmware"],   preProcess=acr122SamAPDUBuilder.getFirmwareVersion ,process=executeAPDU,                                                            postProcess=resultHandlerAPDUAndConvertDataAndSWToString)
 Executer.addCommand(CommandStrings=["acr122","transmit"],   preProcess=acr122SamAPDUBuilder.directTransmit     ,process=executeAPDU,    argChecker=AllTheSameChecker(hexaArgChecker(),"args"))
 Executer.addCommand(CommandStrings=["acr122","response"],   preProcess=acr122SamAPDUBuilder.getResponse        ,process=executeAPDU,    argChecker=DefaultArgsChecker([("Length",i)]),          postProcess=resultHandlerAPDUAndPrintDataAndSW)
 

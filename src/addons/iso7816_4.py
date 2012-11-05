@@ -1,6 +1,5 @@
 #!/usr/bin/python2.6
 from arg.args import *
-from apdu.apduExecuter import Executer
 from apdu.apdu import ApduDefault
 
 class iso7816_4APDUBuilder(object):

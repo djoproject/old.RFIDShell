@@ -1,6 +1,5 @@
 #!/usr/bin/python2.6
 
-from arg.args import Executer
 from smartcard.sw.SWExceptions import CheckingErrorException,SWException
 #from smartcard.util import toHexString
 from apdu import toHexString
@@ -19,7 +18,7 @@ from arg.exception import argExecutionException
     except SWException as ex:
         raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)"""
     
-def resultHandlerAPDUAndConvertDataToString(apduAnswer):
+def resultHandlerAPDUAndConvertDataToString(printer,apduAnswer):
     "convert an apdu hexa result into a human readable string"
     
     if apduAnswer == None:
@@ -33,12 +32,27 @@ def resultHandlerAPDUAndConvertDataToString(apduAnswer):
     s = ""
     for c in apduAnswer:
         s += chr(c)
-    Executer.printOnShell("data = "+s)
+    printer.printOnShell("data = "+s)
         
     #except SWException as ex:
     #    raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
+
+def resultHandlerAPDUAndConvertDataAndSWToString(printer,apduAnswer):
+    "convert an apdu hexa result into a human readable string"
+
+    if apduAnswer == None:
+        return
+
+    s = ""
+    for c in apduAnswer:
+        s += chr(c)
+        
+    s += chr(apduAnswer.sw1)
+    s += chr(apduAnswer.sw2)
     
-def resultHandlerAPDUAndPrintData(apduAnswer):
+    printer.printOnShell("data = "+s)
+    
+def resultHandlerAPDUAndPrintData(printer,apduAnswer):
     "print an apdu result"
     
     if apduAnswer == None:
@@ -49,11 +63,11 @@ def resultHandlerAPDUAndPrintData(apduAnswer):
         
     #try:
     #    data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
-    Executer.printOnShell(toHexString(apduAnswer))
+    printer.printOnShell(toHexString(apduAnswer))
     #except SWException as ex:
     #    raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
         
-def resultHandlerAPDUAndPrintDataAndSW(apduAnswer):
+def resultHandlerAPDUAndPrintDataAndSW(printer,apduAnswer):
     "print the apdu result and the status word"
     
     if apduAnswer == None:
@@ -64,25 +78,25 @@ def resultHandlerAPDUAndPrintDataAndSW(apduAnswer):
         
     #try:
     #    data, sw1, sw2 = Executer.envi["connection"].transmit(apdu.toHexArray())
-    Executer.printOnShell("0x%x 0x%x : " % (apduAnswer.sw1, apduAnswer.sw2)+toHexString(apduAnswer))
+    printer.printOnShell("0x%x 0x%x : " % (apduAnswer.sw1, apduAnswer.sw2)+toHexString(apduAnswer))
     #except SWException as ex:
     #    raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
         
-def executeAPDU(apdu):
+def executeAPDU(envi,apdu):
     "execute an apdu and return an apduAnswer"
 
-    if "connection" not in Executer.envi or Executer.envi["connection"] == None:
+    if "connection" not in envi or envi["connection"] == None:
         raise argExecutionException("no connection available")
 
     try:
-        data, sw1, sw2 =  Executer.envi["connection"].transmit(apdu.toHexArray())
+        data, sw1, sw2 =  envi["connection"].transmit(apdu.toHexArray())
         return ApduAnswer(sw1,sw2,data)
     except SWException as ex:
         raise argExecutionException("0x%x 0x%x : " % (ex.sw1, ex.sw2)+ex.message)
         
-def printByteList(result):
+def printByteList(printer,result):
     if result == None or len(result) == 0:
-        Executer.printOnShell("no item available")
+        printer.printOnShell("no item available")
         return
 
     hexa = ""
@@ -114,16 +128,16 @@ def printByteList(result):
             tmp = "0"+tmp
         binString += tmp+" "
         
-    Executer.printOnShell(hexa+" | "+ascii+" | "+intString+" | "+binString)
+    printer.printOnShell(hexa+" | "+ascii+" | "+intString+" | "+binString)
 
-def printByteListList(result):
+def printByteListList(printer,result):
     if result == None or len(result) == 0:
-        Executer.printOnShell("no item available")
+        printer.printOnShell("no item available")
         return
     
-    Executer.printOnShell("hex          | ascii| dec              | bin")
+    printer.printOnShell("hex          | ascii| dec              | bin")
     for l in result:
-        printByteList(l)
+        printByteList(printer,l)
     
     
     

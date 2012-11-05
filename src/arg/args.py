@@ -86,6 +86,9 @@ class InputManager(object):
         
     def addOutputToNextPreProcess(self,indice,output):
         self.addOutput(indice+1,output)
+        
+    def getPreProcessInputBuffer(self,indice):
+        return self.inputList[indice]
     
     ### PROCESS ###
     def hasProcessInput(self):
@@ -96,7 +99,10 @@ class InputManager(object):
         
     def addProcessOutput(self,output):
         self.addOutput(self.processCount+1,output)
-        
+    
+    def getProcessInputBuffer(self):
+        return self.inputList[self.processCount+1]
+    
     ### POST ###
     def getNextPostProcess(self):
         for i in range(0,self.processCount):
@@ -114,7 +120,10 @@ class InputManager(object):
     def addOutputToNextPostProcess(self,indice,output):
         if (self.processCount+1+indice+1) < len(self.inputList):
             self.addOutput(self.processCount+1+indice+1,output)
-            
+    
+    def getPostProcessInputBuffer(self,indice):
+        return self.inputList[self.processCount+1+indice]
+    
     def __str__(self):
         return str(self.inputList)
 
@@ -131,7 +140,7 @@ class CommandExecuter():
         for s in CommandStrings:
             name += s+" "
         
-        c = UniCommand(name,preProcess.__doc__,self.envi,self,preProcess,process,argChecker,postProcess,showInHelp)
+        c = UniCommand(name,preProcess.__doc__,preProcess,process,argChecker,postProcess,showInHelp)
         
         try:
             self.levelTries.addEntry(CommandStrings,c)
@@ -165,6 +174,7 @@ class CommandExecuter():
     # @return, true if no severe error or correct process, false if severe error
     #
     def executeCommand(self,cmd):
+        #command string split and parse with "|" and " "
         cmd = cmd.split("|")
         if len(cmd) < 0 :
             print "   split command error"
@@ -193,7 +203,7 @@ class CommandExecuter():
         if len(CommandStringsList) < 1:
             return False
         
-        #recherche des commandes dans le tries
+        #look after all the command into the tries
         rawCommandList = []
         for CommandStrings in CommandStringsList:
             #look after the command
@@ -204,7 +214,7 @@ class CommandExecuter():
                 self.printOnShell(str(e))
                 return True
         
-        #gestion des multicommands
+        #manage and prepare the multicommand
         commandList = []
         MultiCommandList = [commandList]
         for rawCommand,args in rawCommandList:
@@ -227,17 +237,29 @@ class CommandExecuter():
                 return False 
         
         ### EXECUTION ###
-        try:
-            for commandList in MultiCommandList: #Multicommand
-                inputManager = InputManager(len(commandList))
-                inputManager.addOutput(0,None)
-                #print "init : "+str(inputManager)
-                while inputManager.hasStillWorkToDo():
+        for commandList in MultiCommandList: #Multicommand
+            inputManager = InputManager(len(commandList))
+            
+            #set the buffer to the command
+            for i in range(0,len(commandList)-1):
+                c,a = commandList[i]
+                c.setBuffer(inputManager.getPreProcessInputBuffer(i),None,inputManager.getPostProcessInputBuffer(i))
+            
+            c,a = commandList[-1]
+            c.setBuffer(inputManager.getPreProcessInputBuffer(len(commandList)-1),inputManager.getProcessInputBuffer(),inputManager.getPostProcessInputBuffer(len(commandList)-1))
+            
+            #set the starting point
+            inputManager.addOutput(0,None)
+            #print "init : "+str(inputManager)
+            
+            indice = 0
+            while inputManager.hasStillWorkToDo(): #the buffer are not empty
+                try: #critical section
                     ### PREPROCESS ###
                     for indice in range(inputManager.getNextPreProcess(),len(commandList)):
                         if inputManager.hasPreProcessInput(indice):
                             commandToExecute,args = commandList[indice]
-                            
+                        
                             args_tmp = list(args)
                             #append the previous value to the args
                             commandInput = inputManager.getNextPreProcessInput(indice)
@@ -248,36 +270,42 @@ class CommandExecuter():
                                 else:
                                     args_tmp.append(commandInput)
 
-                            inputManager.addOutputToNextPreProcess(indice,commandToExecute.preProcessExecution(args_tmp) )
+                            inputManager.addOutputToNextPreProcess(indice,commandToExecute.preProcessExecution(args_tmp,self,self.envi) )
                             #print "pre "+str(indice)+" : "+str(inputManager)
 
                     ### PROCESS ###
+                    indice = len(commandList)-1
                     if inputManager.hasProcessInput():
                         command,args = commandList[len(commandList)-1]
-                        inputManager.addProcessOutput(command.ProcessExecution(inputManager.getNextProcessInput()))
+                        inputManager.addProcessOutput(command.ProcessExecution(inputManager.getNextProcessInput(),self,self.envi))
                         #print "pro : "+str(inputManager)
 
                     ### POSTPROCESS ###
                     for indice in range(inputManager.getNextPostProcess(),len(commandList)):
                         if inputManager.hasPostProcessInput(indice):
                             command,args = commandList[len(commandList)-1-indice]
-                            inputManager.addOutputToNextPostProcess(indice,command.postProcessExecution(inputManager.getNextPostProcessInput(indice)))
+                            inputManager.addOutputToNextPostProcess(indice,command.postProcessExecution(inputManager.getNextPostProcessInput(indice),self,self.envi))
 
                             #print "post "+str(indice)+" : "+str(inputManager)
-        except argExecutionException as aee:
-            self.printOnShell(""+str(aee)+" at "+commandToExecute.name)
-            return True
-        except argException as aee:
-            self.printOnShell(str(aee)+" at "+commandToExecute.name)
-            self.printOnShell("USAGE : "+commandToExecute.name+" "+commandToExecute.argChecker.usage())
-            return True
-        except argPostExecutionException as aee:
-            self.printOnShell(""+str(aee)+" at "+commandToExecute.name)
-            return True
-        except Exception as ex:
-            self.printOnShell("SEVERE : "+str(ex)+" at "+commandToExecute.name)
-            traceback.print_exc() #TODO remove after debug
-            return False
+                except argExecutionException as aee:
+                    c,a = commandList[indice]
+                    
+                    self.printOnShell(""+str(aee)+" at "+c.name)
+                    return True
+                except argException as aee:
+                    c,a = commandList[indice]
+                    self.printOnShell(str(aee)+" at "+c.name)
+                    self.printOnShell("USAGE : "+c.name+" "+aee.usage)
+                    return True
+                except argPostExecutionException as aee:
+                    c,a = commandList[indice]
+                    self.printOnShell(""+str(aee)+" at "+c.name)
+                    return True
+                except Exception as ex:
+                    c,a = commandList[indice]
+                    self.printOnShell("SEVERE : "+str(ex)+" at "+c.name)
+                    traceback.print_exc() #TODO remove after debug
+                    return False
                 
         return True
         
@@ -317,7 +345,8 @@ class CommandExecuter():
             sys.stdout.write(self.envi["prompt"] + readline.get_line_buffer())
 
         sys.stdout.flush()
-        
+    
+    #TODO convert into write function from output
     def printOnShell(self,toPrint):
         print "   "+str(toPrint)
         
@@ -365,22 +394,3 @@ class CommandExecuter():
                 
 Executer = CommandExecuter()
 
-def stringListResultHandler(result):
-    #if result == None or len(result) == 0:
-    #    Executer.printOnShell("no item available")
-    #    return
-        
-    for i in result:
-        Executer.printOnShell(i)
-        
-def printResultHandler(result):
-    if result != None:
-        print str(result)
-    
-def listResultHandler(result):
-    #if result == None or len(result) == 0:
-    #    Executer.printOnShell("no item available")
-    #    return
-
-    for i in result:
-        Executer.printOnShell(str(i))

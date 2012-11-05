@@ -1,5 +1,5 @@
 #!/usr/bin/python2.6
-from arg.args import *
+from arg.args import Executer
 from arg.argchecker import *
 
 from apdu.apduExecuter import *
@@ -398,11 +398,11 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
     def configureCalypsoSamDisableInternalDigestUpdate():
         return ApduDefault(cla=0xFF,ins=0xFC,p1=0x08,p2=0x01)
         
-def readAllFun():
+def readAllFun(envi):
     ls = []
     for i in range(0,0xffff):
         apdu = ProxnrollAPDUBuilder.readBinary(i)
-        apduAnswer = executeAPDU(apdu)
+        apduAnswer = executeAPDU(envi,apdu)
         
         if apduAnswer.sw1 != 0x90 and apduAnswer.sw2 != 0x00:
             print "%x %x" % (apduAnswer.sw1, apduAnswer.sw2)

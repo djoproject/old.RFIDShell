@@ -74,14 +74,14 @@ class DefaultArgsChecker(ArgsChecker):
             self.mandatoryCount = len(self.argCheckerList)
         else:
             if mandatoryCount > len(self.argCheckerList):
-                raise argException("(DefaultArgsChecker) init, the mandatoryCount is bigger than the size of the arg checker list : "+str(mandatoryCount)+" > "+str(len(self.argCheckerList)))
+                raise argException("(DefaultArgsChecker) init, the mandatoryCount is bigger than the size of the arg checker list : "+str(mandatoryCount)+" > "+str(len(self.argCheckerList)),self.usage())
             
             self.mandatoryCount = mandatoryCount
     
     def checkArgs(self,args):
         #check the arguments length
         if len(args) < self.mandatoryCount:
-            raise argException("Argument missing, expected at least "+str(self.mandatoryCount)+", get "+str(len(args)))
+            raise argException("Argument missing, expected at least "+str(self.mandatoryCount)+", get "+str(len(args)),self.usage())
         
         ret = OrderedDict()
         #check every argument
@@ -94,7 +94,12 @@ class DefaultArgsChecker(ArgsChecker):
             if i >= len(args): #non mandatory argument
                 break
             
-            ret[k] = self.argCheckerList[k].getValue(args[i],i)
+            try:
+                ret[k] = self.argCheckerList[k].getValue(args[i],i)
+            except argException as ae:
+                ae.usage = self.usage()
+                raise ae
+                
             i += 1
 
         return ret
@@ -198,21 +203,25 @@ class AllTheSameChecker(ArgsChecker):
         #check the arguments length
         if self.mini != None:
             if len(args) < self.mini:
-                raise argException("Argument missing, expected at least "+str(self.mini)+" items, get "+str(len(args)))
+                raise argException("Argument missing, expected at least "+str(self.mini)+" items, get "+str(len(args)),self.usage())
             
             if self.maxi != None:
                 if len(args) > self.maxi:
-                    raise argException("too much Arguments, expected at most "+str(self.maxi)+", get "+str(len(args)))
+                    raise argException("too much Arguments, expected at most "+str(self.maxi)+", get "+str(len(args)),self.usage())
         
         ret = []
         uniqueSet = []
         #check every argument
         for i in range(0,len(args)):
-            ret.append(self.argChecker.getValue(args[i],i))
+            try:
+                ret.append(self.argChecker.getValue(args[i],i))
+            except argException as ae:
+                ae.usage = self.usage()
+                raise ae
             
             if self.uniqueValue:
                 if args[i] in uniqueSet:
-                    raise argException("duplicate argument, each argument must be unique, the following seems to appear more than once : "+str(args[i]))
+                    raise argException("duplicate argument, each argument must be unique, the following seems to appear more than once : "+str(args[i]),self.usage())
                     
                 uniqueSet.append(args[i])
             
@@ -239,26 +248,38 @@ class InfiniteArgsChecker(ArgsChecker):
         
     def checkArgs(self,args):
         #check limit
-        self.limitChecker.checkLimit(len(self.prefixCheckers),len(args))
-        
+        try:
+            self.limitChecker.checkLimit(len(self.prefixCheckers),len(args))
+        except argException as ae:
+            ae.usage = self.usage()
+            raise ae
+            
         #init return value
         ret = OrderedDict()
         
         #check prefix
         i=0
         for k in self.prefixCheckers:
-            ret[k] = self.prefixCheckers[k].getValue(args[i],i)
+            try:
+                ret[k] = self.prefixCheckers[k].getValue(args[i],i)
+            except argException as ae:
+                ae.usage = self.usage()
+                raise ae
             i += 1
         
         #check suffix
         suffix = []
         uniqueSet = []
         for j in range(i,len(args)):
-            suffix.append(self.suffixChecker.getValue(args[j],j))
-            
+            try:
+                suffix.append(self.suffixChecker.getValue(args[j],j))
+            except argException as ae:
+                ae.usage = self.usage()
+                raise ae
+                
             if self.uniqueValue:
                 if args[j] in uniqueSet:
-                    raise argException("duplicate argument, each argument must be unique, the following seems to appear more than once : "+str(args[j]))
+                    raise argException("duplicate argument, each argument must be unique, the following seems to appear more than once : "+str(args[j]),self.usage())
                     
                 uniqueSet.append(args[j])
         
