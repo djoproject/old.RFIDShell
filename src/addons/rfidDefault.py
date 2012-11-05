@@ -5,8 +5,29 @@ from arg.resultHandler import *
 
 from apdu.apduExecuter import *
 
-from keyList import keys
+try:
+    print "Key Store loading..."
+    from keyList import keys
+except ImportError:
+    import os
+    if not os.path.exists("../keyList.py"):
+        print "Key Store Creation..."
+        try:
+            f = open("../keyList.py"+os.linesep, 'w')
+            f.write("#"+os.linesep)
+            f.write("#"+os.linesep)
+            f.write("# OFFLINE key set"+os.linesep)
+            f.write("#"+os.linesep)
+            f.write("keys = {}"+os.linesep)
+            f.write(os.linesep)
+            f.close()
+        except IOError as ioe:
+            print "failed to create the key store : "+str(ioe)
+            exit()
+
 import platform
+
+#TODO test smartcard
 
 from smartcard.System import readers
 from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
@@ -32,7 +53,7 @@ from apdu.apdu import ApduRaw
 
 ########### TEST CONTEXT ###############
 try:
-    print "load context... please wait"
+    print "context loading... please wait"
     PCSCContext()
     print "context loaded"
 except EstablishContextException as e:

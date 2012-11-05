@@ -4,7 +4,7 @@ from arg.argchecker import *
 
 from apdu.apduExecuter import *
 
-from keyList import keys
+from keyList import keys #TODO manage when key store didn't exist
 from apdu.apdu import ApduDefault
 from apdu.exception import apduBuilderException,apduAnswserException
 from smartcard.sw.SWExceptions import CheckingErrorException
