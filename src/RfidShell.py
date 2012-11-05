@@ -69,8 +69,7 @@ def loadAddonFun(name):
         __import__(toLoad)
         print "   "+toLoad+" loaded !"
     except ImportError as ie:
-        print ie
-        print "unknwon module "+str(name)
+        print "failed to load module "+str(name)+" : "+str(ie)
     
 def echo(args):
     "echo all the args"

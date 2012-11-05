@@ -30,24 +30,31 @@ except ImportError:
 
 import platform
 
-#TODO test smartcard
+#test smartcard
+try:
+    from smartcard.System import readers
+    from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
+    from smartcard.ReaderMonitoring import ReaderMonitor, ReaderObserver
+    from smartcard.CardMonitoring import CardMonitor, CardObserver
+    from smartcard.CardConnection import CardConnection
+    from smartcard.ATR import ATR
+    from smartcard.pcsc.PCSCContext import PCSCContext
+    from smartcard.pcsc.PCSCExceptions import EstablishContextException
 
-from smartcard.System import readers
-from smartcard.CardConnectionObserver import ConsoleCardConnectionObserver
-from smartcard.ReaderMonitoring import ReaderMonitor, ReaderObserver
-from smartcard.CardMonitoring import CardMonitor, CardObserver
-from smartcard.CardConnection import CardConnection
+    from smartcard.sw.ErrorCheckingChain import ErrorCheckingChain
+    from smartcard.sw.ISO7816_4ErrorChecker import ISO7816_4ErrorChecker
+    from smartcard.sw.ISO7816_8ErrorChecker import ISO7816_8ErrorChecker
+    from smartcard.sw.ISO7816_9ErrorChecker import ISO7816_9ErrorChecker
+except ImportError as ie:
+    print "failed to load smartcard : "+str(ie)
+    print "maybe the library is not installed"
+    print "http://pyscard.sourceforge.net"
+    
+    import sys
+    if(sys.platform == 'darwin'):
+        print "HINT : on macos system, try to execute this script with python2.6"
+    
 from apdu.apdu import toHexString
-from smartcard.ATR import ATR
-
-from smartcard.pcsc.PCSCContext import PCSCContext
-from smartcard.pcsc.PCSCExceptions import EstablishContextException
-
-from smartcard.sw.ErrorCheckingChain import ErrorCheckingChain
-from smartcard.sw.ISO7816_4ErrorChecker import ISO7816_4ErrorChecker
-from smartcard.sw.ISO7816_8ErrorChecker import ISO7816_8ErrorChecker
-from smartcard.sw.ISO7816_9ErrorChecker import ISO7816_9ErrorChecker
-
 from apdu.apdu import ApduRaw
 
 #TODO
