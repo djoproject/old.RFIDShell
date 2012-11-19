@@ -1,7 +1,7 @@
 #!/usr/bin/python2.6
 from arg.args import Executer
 from arg.argchecker import *
-
+from addons.iso7816_4 import iso7816_4APDUBuilder
 from apdu.apduExecuter import *
 
 try:
@@ -13,9 +13,10 @@ except ImportError:
 from apdu.apdu import ApduDefault
 from apdu.exception import apduBuilderException,apduAnswserException
 from smartcard.sw.SWExceptions import CheckingErrorException
-from addons.iso7816_4 import iso7816_4APDUBuilder
 from rfid.util import getPIXSS, getPIXNN
 from rfidDefault import printATR
+
+from pcscAddon import pcscAPDUBuilder
 
 proxnrollSW = {
     0x68:(CheckingErrorException, 
@@ -37,7 +38,7 @@ proxnrollSW = {
 }
 #TODO load somewhere
 
-class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
+class ProxnrollAPDUBuilder(pcscAPDUBuilder):
     colorOFF   = 0x00
     colorON    = 0x01
     colorSLOW  = 0x02
@@ -149,15 +150,6 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
         return ApduDefault(cla=0xFF,ins=0xFE,p1=protocolType,p2=timeoutType,data=datas)
         
     ###
-    
-    @staticmethod 
-    def getDataCardSerialNumber():
-        return iso7816_4APDUBuilder.getDataCA(0x00,0x00)
-    
-    @staticmethod
-    def getDataCardATS():
-        return iso7816_4APDUBuilder.getDataCA(0x01,0x00)
-    
     @staticmethod
     def getDataCardCompleteIdentifier():
         return iso7816_4APDUBuilder.getDataCA(0xF0,0x00)
@@ -215,29 +207,24 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
     def loadKey(KeyIndex,KeyName,InVolatile = True ,isTypeA = True):
         if KeyName not in keys:
             raise apduBuilderException("the key name doesn't exist "+str(KeyName))
-            
+        
+        #only allow mifare key
         if len(keys[KeyName]) != 6:
             raise apduBuilderException("invalid key length, must be 6, got "+str(len(keys[KeyName])))
-            
-        #if len(KeyName) != 6:
-        #    raise apduBuilderException("invalid key size, must be 6, got "+str(len(KeyName)))
-        
+
+        #proxnroll specific params
         if InVolatile:
             if KeyIndex < 0 or KeyIndex > 3:
                 raise apduBuilderException("invalid argument KeyIndex, a value between 0 and 3 was expected, got "+str(KeyIndex))
-            
-            if not isTypeA:
-                KeyIndex &= 0x10
-            
-            return ApduDefault(cla=0xFF,ins=0x82,p1=0x00,p2=KeyIndex,data=keys[KeyName])
         else:
             if KeyIndex < 0 or KeyIndex > 15:
                 raise apduBuilderException("invalid argument KeyIndex, a value between 0 and 15 was expected, got "+str(KeyIndex))
         
-            if not isTypeA:
-                KeyIndex &= 0x10
-        
-            return ApduDefault(cla=0xFF,ins=0x82,p1=0x00,p2=KeyIndex,data=keys[KeyName])
+        #B key special index
+        if not isTypeA:
+            KeyIndex &= 0x10
+            
+        return pcscAPDUBuilder.loadKey(KeyIndex,KeyName,InVolatile)
         
     @staticmethod
     def generalAuthenticate(blockNumber,KeyIndex,InVolatile = True ,isTypeA = True):
@@ -247,28 +234,23 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
         if InVolatile:
             if KeyIndex < 0 or KeyIndex > 3:
                 raise apduBuilderException("invalid argument KeyIndex, a value between 0 and 3 was expected, got "+str(KeyIndex))
-                
+            
+            #volatile key special index
             KeyIndex &= 0x20
         else:
             if KeyIndex < 0 or KeyIndex > 15:
                 raise apduBuilderException("invalid argument KeyIndex, a value between 0 and 15 was expected, got "+str(KeyIndex))
             
-        if isTypeA:
-            datas = [0x01,0x00,blockNumber,0x60,KeyIndex]
-        else:
-            datas = [0x01,0x00,blockNumber,0x61,KeyIndex]
+        #if isTypeA:
+        #    datas = [0x01,0x00,blockNumber,0x60,KeyIndex]
+        #else:
+        #    datas = [0x01,0x00,blockNumber,0x61,KeyIndex]
+        #    
+        ap = pcscAPDUBuilder.generalAuthenticate(blockNumber,KeyIndex,InVolatile,isTypeA)
+        
+        ap.setIns(0x88)
      
-        return ApduDefault(cla=0xFF,ins=0x88,p1=0x00,p2=0x00,data=datas)
-    
-    @staticmethod
-    def readBinary(address = 0):
-        if address < 0 or address > 65535:
-            raise apduBuilderException("invalid argument address, a value between 0 and 65535 was expected, got "+str(address))
-        
-        lsb = address&0xFF
-        msb = (address>>8)&0xFF
-        
-        return ApduDefault(cla=0xFF,ins=0xB0,p1=msb,p2=lsb)
+        return ap
         
     @staticmethod
     def mifareClassicRead(blockNumber,KeyName = None):
@@ -288,19 +270,6 @@ class ProxnrollAPDUBuilder(iso7816_4APDUBuilder):
             #    raise apduBuilderException("invalid key size, must be 6, got "+str(len(KeyName)))
                 
             return ApduDefault(cla=0xFF,ins=0xF3,p1=0x00,p2=blockNumber,data=keys[KeyName])
-        
-    @staticmethod
-    def updateBinary(datas,address=0):
-        if address < 0 or address > 65535:
-            raise apduBuilderException("invalid argument address, a value between 0 and 65535 was expected, got "+str(address))
-        
-        if len(datas) < 1 or len(datas) > 255:
-            raise apduBuilderException("invalid datas size, must be a list from 1 to 255 item, got "+str(len(datas)))
-        
-        lsb = address&0xFF
-        msb = (address>>8)&0xFF
-        
-        return ApduDefault(cla=0xFF,ins=0xD6,p1=msb,p2=lsb,data=datas)
         
     @staticmethod
     def mifareClassifWrite(blockNumber,datas,KeyName = None):
@@ -480,6 +449,7 @@ Executer.addCommand(CommandStrings=["proxnroll","mifare","authenticate"],       
 argChecker=DefaultArgsChecker([("blockNumber",hexaArgChecker(0,0xFF)),("KeyIndex",IntegerArgChecker(0,15)),("isTypeA",typeAB),("InVolatile",typeVolatile)],2))
 
 i = IntegerArgChecker()
+#TODO add the expected argument to readBinary
 Executer.addCommand(CommandStrings=["proxnroll","read"],                                   preProcess=ProxnrollAPDUBuilder.readBinary,process=executeAPDU,                 argChecker=DefaultArgsChecker([("address",i)],0),postProcess=resultHandlerAPDUAndPrintData)
 Executer.addCommand(CommandStrings=["proxnroll","mifare","read"],                          preProcess=ProxnrollAPDUBuilder.mifareClassicRead,process=executeAPDU,          argChecker=DefaultArgsChecker([("blockNumber",hexaArgChecker()),("KeyName",stringArgChecker())],1),postProcess=resultHandlerAPDUAndPrintData)
 Executer.addCommand(CommandStrings=["proxnroll","update"],                                 preProcess=ProxnrollAPDUBuilder.updateBinary,process=executeAPDU,               argChecker=InfiniteArgsChecker("datas",hexaArgChecker(),[("address",hexaArgChecker(0,0xFFFF))],defaultLimitChecker(0xFF)))

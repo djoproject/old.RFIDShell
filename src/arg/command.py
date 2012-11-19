@@ -65,13 +65,16 @@ def selfArgChecker(args,meth,envi,printer,checker = None):
                 if index < (len(inspect_result.args) - lendefault):
                     #on assigne a None
                     #self.printOnShell("WARNING unknwon arg <"+str(argname)+"> in command "+commandToExecute.name)
-                    print ("WARNING unknwon arg <"+str(argname)+"> in command ")
+                    print ("WARNING unknwon arg <"+str(argname)+"> in method "+meth.__name__)
                     nextArgs[argname] = None
                 else:
                     #Si c'est un argument avec une valeur par defaut, ne pas assigner  
                     nextArgs[argname] = inspect_result.defaults[index - (len(inspect_result.args) - len(inspect_result.defaults))]
 
             index += 1
+    
+        for k in argsValueDico.keys():
+            print "WARNING unused argument <"+k+"> in method "+meth.__name__
     
     #print nextArgs
     return nextArgs

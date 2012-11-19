@@ -5,6 +5,16 @@ import os, sys
 from tries.multiLevelTries import buildDictionnary
 from arg.argchecker import *
 
+
+#def my_excepthook(type, value, traceback):
+#    print 'Unhandled error:', type, value
+
+#sys.excepthook = my_excepthook
+
+
+import traceback
+
+
 def noneFun():
     pass
     
@@ -69,8 +79,9 @@ def loadAddonFun(name):
         __import__(toLoad)
         print "   "+toLoad+" loaded !"
     except ImportError as ie:
-        print ie
-        print "unknwon module "+str(name)
+        print "import error in <"+name+"> loading : "+str(ie)
+    except NameError as ne:
+        print "name error in <"+name+"> loading : "+str(ne)
     
 def echo(args):
     "echo all the args"
@@ -106,6 +117,13 @@ def intToAscii(args):
 
 def preTraitementForwardArgs(args):
     return args
+    
+def printTrqceBack():
+    for k,v in sys._current_frames().iteritems():
+        print "TRQCEBACK : "+str(v.f_exc_traceback)
+        
+        if v.f_exc_traceback != None:
+            traceback.print_tb(v.f_exc_traceback)
 
 if __name__ == "__main__":
     #Executer = CommandExecuter()
@@ -129,7 +147,8 @@ if __name__ == "__main__":
         c.name        = "Comment"
         c.helpMessage = "Comment a line"
         c.showInHelp = False
-        
+    
+    Executer.addCommand(CommandStrings=["t"]     ,process=printTrqceBack)    
     Executer.addCommand(CommandStrings=["exit"]     ,process=exitFun)
 
     Executer.addCommand(CommandStrings=["quit"]     ,process=exitFun)
@@ -156,7 +175,8 @@ if __name__ == "__main__":
     loadAddonFun("pn532")
     loadAddonFun("mifareUltralight")
     loadAddonFun("scl3711")
-    loadAddonFun("desfire")
+    loadAddonFun("omnikey")
+    #loadAddonFun("desfire")
     
     if len(sys.argv) > 1:
         if os.path.isfile(sys.argv[1]):

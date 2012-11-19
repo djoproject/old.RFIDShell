@@ -60,6 +60,10 @@ class ApduDefault(Apdu):
         
         self.append(expected_answer)
 
+    def setIns(ins):
+        #TODO check the self size
+        self[1] = ins
+
     #def getSize(self):
     #    "return the length of the command"
     #    return len(self.table)

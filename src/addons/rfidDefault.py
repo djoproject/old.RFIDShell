@@ -5,6 +5,7 @@ from arg.resultHandler import *
 
 from apdu.apduExecuter import *
 
+
 try:
     print "Key Store loading..."
     from keyList import keys
@@ -195,8 +196,8 @@ class CardManager( CardObserver ):
             if len(self.cardList) == 1:
                 if connectReaderFromCardFun(Executer.envi):
                     return "connected to a card"
-            else:
-                return "WARNING : autoconnect is enable but there is more than one card available"
+            elif len(self.cardList) > 1:
+                return "WARNING : autoconnect is enable but there is more than one card available, no connection established"
         
         return None
 cardobserver = CardManager()
@@ -424,8 +425,8 @@ def cardInfoFun(cardIndex=None):
     return card.atr
     
 def printATR(bytes):
-    if bytes == None or type(bytes) != list or len(bytes) < 1:
-        Executer.printOnShell("ATR is not defined")
+    if bytes == None or not isinstance(bytes,list) or len(bytes) < 1:
+        Executer.printOnShell("The value is not a valid ATR")
         return
     
     atr = ATR(bytes)
@@ -650,7 +651,7 @@ Executer.addCommand(CommandStrings=["auto","connection"],           process=enab
 Executer.addCommand(CommandStrings=["disable","auto","connection"], process=disableAutoCon)
 
 protType = tokenValueArgChecker({"T0":CardConnection.T0_protocol,"T1":CardConnection.T1_protocol,"RAW":CardConnection.RAW_protocol,"T15":CardConnection.T15_protocol})
-Executer.addCommand(CommandStrings=["set","protocol"],           process=setProtocol, argChecker=AllTheSameChecker(protType,"protocols",None,None,True))
+Executer.addCommand(CommandStrings=["set","protocol"],           process=setProtocol, argChecker=AllTheSameChecker(protType,"protocols",1,4,True))
 Executer.addCommand(CommandStrings=["get","protocol"],           process=getProtocol)
 
 

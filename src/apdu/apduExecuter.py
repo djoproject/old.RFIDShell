@@ -82,14 +82,14 @@ def resultHandlerAPDUAndPrintDataAndSW(printer,apduAnswer):
     #except SWException as ex:
     #    raise argExecutionException("%x %x : " % (ex.sw1, ex.sw2)+ex.message)
         
-def executeAPDU(envi,apdu):
+def executeAPDU(envi,apdu,protocol=None):
     "execute an apdu and return an apduAnswer"
 
     if "connection" not in envi or envi["connection"] == None:
         raise argExecutionException("no connection available")
 
     try:
-        data, sw1, sw2 =  envi["connection"].transmit(apdu.toHexArray())
+        data, sw1, sw2 =  envi["connection"].transmit(apdu.toHexArray(),protocol)
         return ApduAnswer(sw1,sw2,data)
     except SWException as ex:
         raise argExecutionException("0x%x 0x%x : " % (ex.sw1, ex.sw2)+ex.message)
